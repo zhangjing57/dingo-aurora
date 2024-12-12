@@ -43,7 +43,6 @@ async def delete_asset_by_id(asset_id:str,):
         # 查询成功
         result = assert_service.get_asset(asset_id)
         return result
-        # return success_response(result)
     except Exception as e:
         return None
 
