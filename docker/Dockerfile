@@ -1,11 +1,11 @@
-FROM python:3.9-slim-buster
+FROM ubuntu:20.04
 
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends apt-utils \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    gcc traceroute lsof iputils-ping wget curl locales-all\
+    gcc traceroute lsof iputils-ping vim wget curl locales-all\
     python3-pip
 
 COPY . /opt/dingoops
