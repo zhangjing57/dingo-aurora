@@ -1,12 +1,12 @@
-FROM python:3.9 AS builder
+FROM python:3.9-slim-buster
 
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends apt-utils \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    gcc make nginx traceroute lsof iputils-ping vim git wget curl locales-all ssl-cert \
-    python3 python3-pip python3-dev python3-venv python-dev-is-python3
+    gcc traceroute lsof iputils-ping wget curl locales-all\
+    python3-pip
 
 COPY . /opt/dingoops
 
