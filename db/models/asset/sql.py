@@ -14,7 +14,9 @@ from enum import Enum
 #链接数据库，可以使用配置文件进行定义
 engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3dEHFg@10.220.56.254:3306/dingoops?charset=utf8mb3", echo=True)
 # 资产排序字段字典
-asset_dir_dic= {"name":AssetBasicInfo.name, "id": AssetBasicInfo.id}
+asset_dir_dic= {"frame_position":AssetPositionsInfo.frame_position, "asset_status":AssetBasicInfo.asset_status, "asset_name":AssetBasicInfo.name, "id": AssetBasicInfo.id}
+# 配件的所有列
+part_columns = [getattr(AssetPartsInfo, column.name).label(column.name) for column in AssetPartsInfo.__table__.columns]
 
 class AssetSQL:
 
@@ -30,7 +32,7 @@ class AssetSQL:
             session.add(new_user)
 
     @classmethod
-    def list_asset(cls, asset_id, asset_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
+    def list_asset(cls, asset_id, asset_name, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
         Session = sessionmaker(bind=engine,expire_on_commit=False)
         session = Session()
         with session.begin():
@@ -47,6 +49,7 @@ class AssetSQL:
                                   AssetManufacturesInfo.id.label("manufacture_id"),
                                   AssetManufacturesInfo.name.label("manufacture_name"),
                                   AssetManufacturesInfo.description.label("manufacture_description"),
+                                  AssetManufacturesInfo.extra.label("manufacture_extra"),
                                   AssetPositionsInfo.id.label("position_id"),
                                   AssetPositionsInfo.frame_position.label("position_frame_position"),
                                   AssetPositionsInfo.cabinet_position.label("position_cabinet_position"),
@@ -81,13 +84,31 @@ class AssetSQL:
                 outerjoin(AssetContractsInfo, AssetContractsInfo.asset_id == AssetBasicInfo.id). \
                 outerjoin(AssetBelongsInfo, AssetBelongsInfo.asset_id == AssetBasicInfo.id). \
                 outerjoin(AssetCustomersInfo, AssetCustomersInfo.asset_id == AssetBasicInfo.id)
-                # 数据库查询参数
+            # 数据库查询参数
             if asset_name is not None and len(asset_name) > 0 :
                 query = query.filter(AssetBasicInfo.name.like('%' + asset_name + '%'))
             if asset_id is not None and len(asset_id) > 0 :
                 query = query.filter(AssetBasicInfo.id == asset_id)
+            if asset_status is not None and len(asset_status) > 0 :
+                query = query.filter(AssetBasicInfo.asset_status == asset_status)
+            if frame_position is not None and len(frame_position) > 0 :
+                query = query.filter(AssetPositionsInfo.frame_position.like('%' + frame_position + '%'))
+            if cabinet_position is not None and len(cabinet_position) > 0 :
+                query = query.filter(AssetPositionsInfo.cabinet_position.like('%' + cabinet_position + '%'))
+            if u_position is not None and len(u_position) > 0 :
+                query = query.filter(AssetPositionsInfo.u_position.like('%' + u_position + '%'))
+            if equipment_number is not None and len(equipment_number) > 0 :
+                query = query.filter(AssetBasicInfo.equipment_number.like('%' + equipment_number + '%'))
+            if asset_number is not None and len(asset_number) > 0 :
+                query = query.filter(AssetBasicInfo.asset_number.like('%' + asset_number + '%'))
+            if sn_number is not None and len(sn_number) > 0 :
+                query = query.filter(AssetBasicInfo.sn_number.like('%' + sn_number + '%'))
+            if department_name is not None and len(department_name) > 0 :
+                query = query.filter(AssetBelongsInfo.department_name.like('%' + department_name + '%'))
+            if user_name is not None and len(user_name) > 0 :
+                query = query.filter(AssetBelongsInfo.user_name.like('%' + user_name + '%'))
 
-            # 总数
+                # 总数
             count = query.count()
             # 排序
             if sort_keys is not None and asset_dir_dic[sort_keys] is not None:
@@ -162,6 +183,30 @@ class AssetSQL:
 
 
     @classmethod
+    def get_asset_basic_info_by_id(cls, id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.query(AssetBasicInfo).filter(AssetBasicInfo.id == id).first()
+
+
+    @classmethod
+    def get_asset_basic_info_by_asset_number(cls, asset_number):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.query(AssetBasicInfo).filter(AssetBasicInfo.asset_number == asset_number).first()
+
+
+    @classmethod
+    def update_asset_basic_info(cls, asset_basic_info_db):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.merge(asset_basic_info_db)
+
+
+    @classmethod
     def create_asset_basic_info(cls, data):
         Session = sessionmaker(bind=engine, expire_on_commit=False)
         session = Session()
@@ -185,8 +230,9 @@ class AssetSQL:
                 session.add(belong_info)
             if customer_info is not None:
                 session.add(customer_info)
-            if part_info is not None:
+            if part_info:
                 session.add_all(part_info)
+
 
 
     @classmethod
@@ -296,3 +342,67 @@ class AssetSQL:
             assert_part_list = query.all()
             # 返回
             return assert_part_list
+
+
+    @classmethod
+    def list_asset_part_page(cls, part_catalog=None, asset_id=None, name=None, page=1, page_size=10, field=None, dir="asc"):
+        Session = sessionmaker(bind=engine,expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            query = session.query(*part_columns, AssetBasicInfo.name.label("asset_name"), AssetBasicInfo.asset_number.label("asset_number"))
+            # 外连接
+            query = query.outerjoin(AssetBasicInfo, AssetBasicInfo.id == AssetPartsInfo.asset_id)
+            # 数据库查询参数
+            if name is not None:
+                query = query.filter(AssetPartsInfo.name.like('%' + name + '%'))
+            if asset_id is not None:
+                query = query.filter(AssetPartsInfo.asset_id == asset_id)
+            if part_catalog is not None:
+                if part_catalog == "inventory":
+                    query = query.filter(AssetPartsInfo.asset_id == None)
+                if part_catalog == "used":
+                    query = query.filter(AssetPartsInfo.asset_id != None)
+            # 总数
+            count = query.count()
+            # 分页条件
+            page_size = int(page_size)
+            page_num = int(page)
+            # 查询所有数据
+            if page_size == -1:
+                return count, query.all()
+            # 页数计算
+            start = (page_num - 1) * page_size
+            query = query.limit(page_size).offset(start)
+            assert_part_list = query.all()
+            # 返回
+            return count, assert_part_list
+
+
+    @classmethod
+    def create_asset_part(cls, asset_part_info):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.add(asset_part_info)
+
+    @classmethod
+    def update_asset_part(cls, asset_part_info):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.merge(asset_part_info)
+
+    @classmethod
+    def delete_asset_part(cls, asset_part_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            # 删除资产的厂商信息
+            session.query(AssetPartsInfo).filter(AssetPartsInfo.id == asset_part_id).delete()
+
+    @classmethod
+    def get_asset_part_by_id(cls, asset_part_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.query(AssetPartsInfo).filter(AssetPartsInfo.id == asset_part_id).first()

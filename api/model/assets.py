@@ -33,6 +33,7 @@ class AssetManufacturerApiModel(BaseModel):
     asset_id: Optional[str] = Field(None, description="厂商关联的资产设备编号信息")
     name: Optional[str] = Field(None, description="厂商的名称")
     description: Optional[str] = Field(None, description="厂商的描述信息")
+    extra: Optional[Dict[str, Any]] = Field(None, description="厂商的扩展信息")
 
 
 # 资产购买合同信息
@@ -94,3 +95,8 @@ class AssetCreateApiModel(BaseModel):
     # 租户信息
     asset_customer: Optional[AssetCustomerApiModel] = Field(None, description="资产设备的租户信息")
 
+
+class AssetUpdateStatusApiModel(BaseModel):
+    asset_id: str = Field(None, description="资产设备的id")
+    asset_status: str = Field(None, description="资产设备的状态")
+    asset_status_description: Optional[str] = Field(None, description="状态的描述信息，错误情况填写工单url之类信息")
