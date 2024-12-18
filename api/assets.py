@@ -50,6 +50,8 @@ async def download_assets_xlsx():
 async def list_assets(
         asset_id:str = Query(None, description="资产id"),
         asset_name:str = Query(None, description="资产名称"),
+        asset_category:str = Query(None, description="资产大类（服务器、网络设备）"),
+        asset_type:str = Query(None, description="资产类型"),
         asset_status:str = Query(None, description="资产状态"),
         frame_position:str = Query(None, description="机架"),
         cabinet_position:str = Query(None, description="机柜"),
@@ -67,7 +69,7 @@ async def list_assets(
     # 返回数据接口
     try:
         # 查询成功
-        result = assert_service.list_assets(asset_id, asset_name, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
+        result = assert_service.list_assets(asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
         return result
         # return success_response(result)
     except Exception as e:

@@ -32,7 +32,7 @@ class AssetSQL:
             session.add(new_user)
 
     @classmethod
-    def list_asset(cls, asset_id, asset_name, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
+    def list_asset(cls, asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
         Session = sessionmaker(bind=engine,expire_on_commit=False)
         session = Session()
         with session.begin():
@@ -40,6 +40,8 @@ class AssetSQL:
             query = session.query(AssetBasicInfo.id.label("id"),
                                   AssetBasicInfo.name.label("name"),
                                   AssetBasicInfo.asset_type_id.label("asset_type_id"),
+                                  AssetBasicInfo.asset_category.label("asset_category"),
+                                  AssetBasicInfo.asset_type.label("asset_type"),
                                   AssetBasicInfo.equipment_number.label("equipment_number"),
                                   AssetBasicInfo.sn_number.label("sn_number"),
                                   AssetBasicInfo.asset_number.label("asset_number"),
@@ -89,6 +91,10 @@ class AssetSQL:
                 query = query.filter(AssetBasicInfo.name.like('%' + asset_name + '%'))
             if asset_id is not None and len(asset_id) > 0 :
                 query = query.filter(AssetBasicInfo.id == asset_id)
+            if asset_category is not None and len(asset_category) > 0 :
+                query = query.filter(AssetBasicInfo.asset_category == asset_category)
+            if asset_type is not None and len(asset_type) > 0 :
+                query = query.filter(AssetBasicInfo.asset_type == asset_type)
             if asset_status is not None and len(asset_status) > 0 :
                 query = query.filter(AssetBasicInfo.asset_status == asset_status)
             if frame_position is not None and len(frame_position) > 0 :

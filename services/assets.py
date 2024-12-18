@@ -27,11 +27,11 @@ LOG = log.getLogger(__name__)
 class AssetsService:
 
     # 查询资产列表
-    def list_assets(self, asset_id, asset_name, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs):
+    def list_assets(self, asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs):
         # 业务逻辑
         try:
             # 按照条件从数据库中查询数据
-            count, data = AssetSQL.list_asset(asset_id, asset_name, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
+            count, data = AssetSQL.list_asset(asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
             # 数据处理
             ret = []
             # 遍历
@@ -40,6 +40,8 @@ class AssetsService:
                 temp = {}
                 temp["asset_id"] = r.id
                 temp["asset_type_id"] = r.asset_type_id
+                temp["asset_category"] = r.asset_category
+                temp["asset_type"] = r.asset_type
                 temp["asset_name"] = r.name
                 temp["equipment_number"] = r.equipment_number
                 temp["sn_number"] = r.sn_number
@@ -150,7 +152,7 @@ class AssetsService:
             if asset.asset_name is None:
                 raise Exception
             # 2、重名
-            count, _ = AssetSQL.list_asset(None, asset.asset_name, None, None, None, None, None, None, None, None, None, 1,10,None,None)
+            count, _ = AssetSQL.list_asset(None, asset.asset_name, None,None, None, None, None, None, None, None, None, None, None, 1,10,None,None)
             if count > 0:
                 LOG.error("asset name exist")
                 raise Exception
@@ -188,6 +190,8 @@ class AssetsService:
         asset_basic_info_db = AssetBasicInfo(
             id=uuid.uuid4().hex,
             asset_type_id=asset.asset_type_id,
+            asset_category=asset.asset_category,
+            asset_type=asset.asset_type,
             name=asset.asset_name,
             description=asset.asset_description,
             equipment_number=asset.equipment_number,
@@ -328,7 +332,7 @@ class AssetsService:
         # 详情
         try:
             # 根据id查询
-            res = self.list_assets(asset_id, None, None, None, None, None, None, None, None, None, None, 1, 10, None, None)
+            res = self.list_assets(asset_id, None, None,None,None, None, None, None, None, None, None, None, None, 1, 10, None, None)
             # 空
             if not res or not res.get("data"):
                 return None
@@ -584,7 +588,7 @@ class AssetsService:
         page = 1
         page_size = 100
         # 查询一页
-        res = self.list_assets(None, None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+        res = self.list_assets(None, None, None, None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
         while res and res['data']:
             # 写入数据
             for temp in res['data']:
@@ -614,7 +618,7 @@ class AssetsService:
                 break
             # 查询下一页
             page = page + 1
-            res = self.list_assets(None, None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+            res = self.list_assets(None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
         try:
             # 加载模板文件
             book = load_workbook(result_file_path)

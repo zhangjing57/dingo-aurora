@@ -75,6 +75,8 @@ class AssetCreateApiModel(BaseModel):
     asset_id: Optional[str] = Field(None, description="资产设备的id")
     asset_name: str = Field(..., description="资产设备的名称")
     asset_type_id: Optional[str] = Field(..., description="资产设备的类型id")
+    asset_category: Optional[str] = Field(..., description="资产设备的大类")
+    asset_type: Optional[str] = Field(..., description="资产设备的类型Key")
     asset_description: Optional[str] = Field(None, description="资产设备描述信息")
     # 资产基础信息
     equipment_number: Optional[str] = Field(None, description="资产设备型号")

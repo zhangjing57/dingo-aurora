@@ -34,6 +34,8 @@ class AssetBasicInfo(Base):
 
     id = Column(String(length=128), primary_key= True, nullable=False, index=True, unique=False)
     asset_type_id = Column(String(length=128), nullable=True)
+    asset_category = Column(String(length=128), nullable=True)
+    asset_type = Column(String(length=128), nullable=True)
     name = Column(String(length=128), nullable=True)
     description = Column(String(length=255), nullable=True)
     equipment_number = Column(String(length=128), nullable=True)
