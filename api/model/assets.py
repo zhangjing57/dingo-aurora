@@ -28,12 +28,22 @@ class AssetPartApiModel(BaseModel):
     description: Optional[str] = Field(None, description="配件的备注描述")
 
 
+# 资产流量信息
+class AssetFlowApiModel(BaseModel):
+    id: Optional[str] = Field(None, description="流量信息的id")
+    asset_id: Optional[str] = Field(None, description="流量关联的资产设备的id")
+    flow_type: Optional[str] = Field(None, description="流量的类型")
+    flow_config: Optional[str] = Field(None, description="流量的配置信息")
+    extra: Optional[Dict[str, Any]] = Field(None, description="流量的扩展信息")
+    description: Optional[str] = Field(None, description="流量的备注描述")
+
+
 # 资产生产厂商信息
 class AssetManufacturerApiModel(BaseModel):
     asset_id: Optional[str] = Field(None, description="厂商关联的资产设备编号信息")
     name: Optional[str] = Field(None, description="厂商的名称")
     description: Optional[str] = Field(None, description="厂商的描述信息")
-    extra: Optional[Dict[str, Any]] = Field(None, description="厂商的扩展信息")
+    extra: Optional[List[Dict[str, Any]]] = Field(None, description="厂商的扩展信息")
 
 
 # 资产购买合同信息
@@ -96,9 +106,20 @@ class AssetCreateApiModel(BaseModel):
     asset_belong: Optional[AssetBelongApiModel] = Field(None, description="资产设备的所属用户信息")
     # 租户信息
     asset_customer: Optional[AssetCustomerApiModel] = Field(None, description="资产设备的租户信息")
+    # 流量信息
+    asset_flow: Optional[List[AssetFlowApiModel]] = Field(None, description="资产设备的流量信息")
 
 
 class AssetUpdateStatusApiModel(BaseModel):
     asset_id: str = Field(None, description="资产设备的id")
     asset_status: str = Field(None, description="资产设备的状态")
     asset_status_description: Optional[str] = Field(None, description="状态的描述信息，错误情况填写工单url之类信息")
+
+
+class AssetTypeApiModel(BaseModel):
+    id:  Optional[str] = Field(None, description="资产类型的id")
+    parent_id:  Optional[str] = Field(None, description="资产类型的父id")
+    asset_type_name:  str = Field(None, description="资产类型的英文名称, 如果父id存在，英文名称以父名称_作为开头")
+    asset_type_name_zh:  str = Field(None, description="资产类型的中文名称")
+    queue:  int = Field(None, description="资产类型的顺序号码")
+    description:  str = Field(None, description="资产类型的描述信息")

@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from mako.testing.helpers import result_lines
 
 from api.model.assets import AssetCreateApiModel, AssetManufacturerApiModel, AssetUpdateStatusApiModel, \
-    AssetPartApiModel
+    AssetPartApiModel, AssetTypeApiModel
 from api.response import ResponseModel, success_response
 from services.assets import AssetsService
 from utils.constant import EXCEL_TEMP_DIR, ASSET_TEMPLATE_ASSET_SHEET, ASSET_TEMPLATE_PART_SHEET
@@ -19,6 +19,60 @@ from utils.datetime import format_unix_timestamp, format_d8q_timestamp
 router = APIRouter()
 assert_service = AssetsService()
 
+
+# 以下是资产的类型相关的接口 start
+
+@router.get("/assets/types", summary="查询资产类型列表", description="根据各种条件查询资产列表数据")
+async def list_assets_types(
+        id:str = Query(None, description="资产类型id"),
+        asset_type_name:str = Query(None, description="资产类型名称"),
+        asset_type_name_zh:str = Query(None, description="资产类型中文名称")):
+    # 接收查询参数
+    # 返回数据接口
+    try:
+        # 查询成功
+        result = assert_service.list_assets_types(id, asset_type_name, asset_type_name_zh, True)
+        return result
+    except Exception as e:
+        return None
+
+@router.post("/assets/types", summary="创建资产类型", description="创建资产类型信息")
+async def create_asset_type(asset_type:AssetTypeApiModel):
+    # 创建资产类型
+    try:
+        # 创建成功
+        result = assert_service.create_asset_type(asset_type)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset type create error")
+
+@router.delete("/assets/types/{id}", summary="删除资产类型", description="根据资产id删除资产类型信息(默认删掉子类型)")
+async def delete_asset_type_by_id(id:str):
+    # 删除资产类型
+    try:
+        # 删除成功
+        result = assert_service.delete_asset_type_by_id(id)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset type delete error")
+
+@router.put("/assets/types/{id}", summary="更新资产类型信息", description="根据id更新资产类型信息")
+async def update_asset_type_by_id(id:str, asset_type:AssetTypeApiModel):
+    # 更新资产类型
+    try:
+        # 更新成功
+        result = assert_service.update_asset_type_by_id(id, asset_type)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset type update error")
+
+# 以下是资产的类型相关的接口 end
 
 @router.get("/assets/download", summary="下载资产信息", description="根据条件下载对应的资产文件")
 async def download_assets_xlsx():
@@ -212,7 +266,7 @@ async def list_manufactures(
         result = assert_service.list_manufactures(manufacture_name, page, page_size, sort_keys, sort_dirs)
         return result
     except Exception as e:
-        return None
+        raise HTTPException(status_code=400, detail="manufacture list error")
 
 @router.delete("/manufactures/{manufacture_id}", summary="删除厂商", description="根据厂商id删除厂商数据信息")
 async def delete_manufacture_by_id(manufacture_id:str):
@@ -224,7 +278,7 @@ async def delete_manufacture_by_id(manufacture_id:str):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return None
+        raise HTTPException(status_code=400, detail="manufacture delete error")
 
 
 @router.put("/manufactures/{manufacture_id}", summary="修改厂商", description="修改厂商的数据信息")
@@ -237,23 +291,8 @@ async def update_manufacture_by_id(manufacture_id:str, manufacture:AssetManufact
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return None
+        raise HTTPException(status_code=400, detail="manufacture update error")
 
-
-# 以下是资产的类型相关的接口 start
-@router.get("/asset_types", summary="查询资产类型列表", description="根据各种条件查询资产列表数据")
-async def list_assets_types(
-        asset_type_name:str = Query(None, description="资产类型名称")):
-    # 接收查询参数
-    # 返回数据接口
-    try:
-        # 查询成功
-        result = assert_service.list_assets_types(asset_type_name)
-        return result
-    except Exception as e:
-        return None
-
-# 以下是资产的类型相关的接口 end
 
 # 以下时资产配件的相关接口 start
 @router.get("/parts", summary="查询资产配件列表", description="根据各种条件分页查询资产配件列表数据")

@@ -9,10 +9,11 @@ import pandas as pd
 from datetime import datetime
 
 from openpyxl.reader.excel import load_workbook
+from typing_extensions import assert_type
 
 from api.model.assets import AssetCreateApiModel
 from db.models.asset.models import AssetBasicInfo, AssetManufacturesInfo, AssetPartsInfo, AssetPositionsInfo, \
-    AssetContractsInfo, AssetCustomersInfo, AssetBelongsInfo
+    AssetContractsInfo, AssetCustomersInfo, AssetBelongsInfo, AssetType, AssetFlowsInfo
 from db.models.asset.sql import AssetSQL
 from math import ceil
 from oslo_log import log
@@ -97,6 +98,8 @@ class AssetsService:
                 temp["asset_customer"] = temp_cutomer
                 # 配件信息
                 temp["asset_part"] = self.list_assets_parts(r.id)
+                # 流量信息
+                temp["asset_flow"] = self.list_assets_flows(r.id)
                 # 加入列表
                 ret.append(temp)
 
@@ -174,8 +177,10 @@ class AssetsService:
             asset_customer_info_db = self.convert_asset_customer_info_db(asset)
             # 7、资产配件信息
             asset_part_info_db = self.convert_asset_part_info_db(asset)
+            # 8、资产流量信息
+            asset_flow_info_db = self.convert_asset_flow_info_db(asset)
             # 保存对象
-            AssetSQL.create_asset(asset_basic_info_db, asset_manufacture_info_db, asset_position_info_db, asset_contract_info_db, asset_belong_info_db, asset_customer_info_db, asset_part_info_db)
+            AssetSQL.create_asset(asset_basic_info_db, asset_manufacture_info_db, asset_position_info_db, asset_contract_info_db, asset_belong_info_db, asset_customer_info_db, asset_part_info_db, asset_flow_info_db)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -246,6 +251,30 @@ class AssetsService:
             asset_part_info_dbs.append(asset_part_info_db)
         # 返回数据
         return asset_part_info_dbs
+
+
+    # 资产创建时流量对象数据转换
+    def convert_asset_flow_info_db(self, asset):
+        # 判空
+        if asset.asset_flow is None:
+            return None
+        # 配件列表
+        asset_flow_info_dbs = []
+        # 遍历
+        for temp in asset.asset_flow:
+            # 数据转化为db对象
+            asset_flow_info_db = AssetFlowsInfo(
+                id=uuid.uuid4().hex,
+                asset_id=asset.asset_id,
+                flow_type=temp.flow_type,
+                flow_config=temp.flow_config,
+                extra=json.dumps(temp.extra),
+                description=temp.description,
+            )
+            #
+            asset_flow_info_dbs.append(asset_flow_info_db)
+        # 返回数据
+        return asset_flow_info_dbs
 
 
     # 资产创建时位置对象数据转换
@@ -661,6 +690,11 @@ class AssetsService:
         # 定义id
         manufacture_id = None
         try:
+            # 重名校验
+            if manufacture.name is not None:
+                count, _ = AssetSQL.list_manufacture(manufacture.name)
+                if count > 0:
+                    raise Exception
             # 数据组装
             # 资产厂商信息
             manufacture_info_db = self.convert_manufacturer_info_db(manufacture)
@@ -701,11 +735,11 @@ class AssetsService:
             for r in data:
                 # 填充数据 厂商信息
                 temp_manufacture = {}
-                temp_manufacture["manufacture_id"] = r.id
+                temp_manufacture["id"] = r.id
                 temp_manufacture["asset_id"] = r.asset_id
-                temp_manufacture["manufacture_name"] = r.name
-                temp_manufacture["manufacture_extra"] = r.extra
-                temp_manufacture["manufacture_description"] = r.description
+                temp_manufacture["name"] = r.name
+                temp_manufacture["extra"] = r.extra
+                temp_manufacture["description"] = r.description
                 # 加入列表
                 ret.append(temp_manufacture)
             # 返回数据
@@ -752,10 +786,18 @@ class AssetsService:
             # 填充需要修改的数据
             # 名称
             if manufacture_update_info.name is not None and len(manufacture_update_info.name) > 0:
+                # 重名校验 名称不是当前名称 查询是否与其他名称重复
+                if manufacture_update_info.name != manufacture_db.name:
+                    count, _ = AssetSQL.list_manufacture(manufacture_update_info.name)
+                    if count > 0:
+                        raise Exception
                 manufacture_db.name = manufacture_update_info.name
             # 描述
             if manufacture_update_info.description is not None and len(manufacture_update_info.description) > 0:
                 manufacture_db.description = manufacture_update_info.description
+            # 描述
+            if manufacture_update_info.extra:
+                manufacture_db.extra = json.dumps(manufacture_update_info.extra)
             # 保存对象
             AssetSQL.update_manufacture(manufacture_db)
         except Exception as e:
@@ -767,11 +809,11 @@ class AssetsService:
 
 # 以下是资产类型相关的service
     # 查询资产类型列表
-    def list_assets_types(self, asset_type_name):
+    def list_assets_types(self, id, asset_type_name, asset_type_name_zh, child_included):
         # 业务逻辑
         try:
             # 按照条件从数据库中查询数据
-            data = AssetSQL.list_asset_type(asset_type_name)
+            data = AssetSQL.list_asset_type(id, None,asset_type_name, asset_type_name_zh)
             # 数据处理
             ret = []
             # 遍历
@@ -786,12 +828,146 @@ class AssetsService:
                 temp["description"] = r.description
                 # 加入列表
                 ret.append(temp)
+            # 需要子级数据
+            if child_included:
+                pass
             # 返回数据
             return ret
         except Exception as e:
             import traceback
             traceback.print_exc()
             return None
+
+
+    # 创建资产类型
+    def create_asset_type(self, asset_type_api_model):
+        # 业务逻辑
+        try:
+            # 业务校验 对象非空，数据线填充
+            # 判空
+            if asset_type_api_model is None or asset_type_api_model.asset_type_name is None or asset_type_api_model.asset_type_name_zh is None:
+                return None
+            # 数据对象转换
+            asset_type_db = self.convert_asset_type_info_db(asset_type_api_model)
+            # 父id校验
+            parent_asset_type_db = None
+            if asset_type_db.parent_id:
+                # 查询父id的类型数据
+                data = AssetSQL.list_asset_type(asset_type_db.parent_id, None,None, None)
+                # 如果数据不存在
+                if not data:
+                    LOG.error("parent not exist")
+                    raise Exception
+                # 获取数据
+                parent_asset_type_db = data[0]
+                # 英文名称匹配校验
+                if not asset_type_db.asset_type_name.startswith(parent_asset_type_db.asset_type_name):
+                    LOG.error("asset type name is incompatible")
+                    raise Exception
+            # 数据入库
+            AssetSQL.create_asset_type(asset_type_db)
+            # 返回
+            return asset_type_db.id
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
+    # api的model对象转换数据库对象
+    def convert_asset_type_info_db(self, asset_type_api_model):
+        # 判空
+        if asset_type_api_model is None:
+            return None
+        # 数据转化为db对象
+        asset_type_db = AssetType(
+            id=uuid.uuid4().hex,
+            parent_id=asset_type_api_model.parent_id,
+            asset_type_name=asset_type_api_model.asset_type_name,
+            asset_type_name_zh=asset_type_api_model.asset_type_name_zh,
+            queue=asset_type_api_model.queue,
+            description=asset_type_api_model.description,
+        )
+        # 返回数据
+        return asset_type_db
+
+    # 查询资产类型及其子类型列表
+    def list_child_asset_types(self, id):
+        # 业务逻辑
+        try:
+            # 返回数据
+            res = list()
+            # 按照条件从数据库中查询数据
+            data = AssetSQL.list_asset_type(None, id,None, None)
+            # 数据处理
+            if not data:
+                return res
+            # 加入当前数据
+            res.extend(data)
+            # 遍历
+            for temp_asset_type in data:
+                # 查询当前的子数据
+                temp_data = self.list_child_asset_types(temp_asset_type.id)
+                # 存在子数据
+                if temp_data:
+                    res.extend(temp_data)
+            # 返回数据结果
+            return res
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return None
+
+    # 删除资产类型
+    def delete_asset_type_by_id(self, asset_type_id):
+        # 业务校验
+        if asset_type_id is None or len(asset_type_id) <= 0:
+            return None
+        # 删除
+        try:
+            # 先删除下级然后再删除上级
+            # 递归查询当前id的所有子类型
+            child_data = self.list_child_asset_types(asset_type_id)
+            # 遍历删除子类型
+            if child_data:
+                for temp_child_type in child_data:
+                    # 删除子对象
+                    AssetSQL.delete_asset_type(temp_child_type.id)
+            # 删除对象
+            AssetSQL.delete_asset_type(asset_type_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+        # 成功返回资产id
+        return asset_type_id
+
+
+    # 根据id修改资产类型
+    def update_asset_type_by_id(self, id, asset_type):
+        # 业务校验
+        if asset_type is None or id is None or len(id) <= 0:
+            return None
+        try:
+            # 资产类型信息
+            assert_type_db = AssetSQL.get_asset_type_by_id(id)
+            # 判空
+            if assert_type_db is None:
+                return None
+            # 填充需要修改的数据
+            # 中文名称
+            if asset_type.asset_type_name_zh is not None and len(asset_type.asset_type_name_zh) > 0:
+                assert_type_db.asset_type_name_zh = asset_type.asset_type_name_zh
+            # 描述
+            if asset_type.description is not None and len(asset_type.description) > 0:
+                assert_type_db.description = asset_type.description
+            # 保存对象
+            AssetSQL.update_asset_type(assert_type_db)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+        # 成功返回id
+        return id
 
 
     # 以下是资产配件相关方法
@@ -887,7 +1063,7 @@ class AssetsService:
         return asset_part_id
 
 
-        # 创建配件对象数据转换 1个数据对象
+    # 创建配件对象数据转换 1个数据对象
     def convert_asset_part_info_db_4api(self, asset_part):
         # 判空
         if asset_part is None:
@@ -1019,3 +1195,32 @@ class AssetsService:
             traceback.print_exc()
         # 成功返回资产id
         return id
+
+
+    # 以下是资产流量相关方法
+    # 查询资产流量列表
+    def list_assets_flows(self, asset_id):
+        # 业务逻辑
+        try:
+            # 按照条件从数据库中查询数据
+            data = AssetSQL.list_asset_flow(asset_id)
+            # 数据处理
+            ret = []
+            # 遍历
+            for r in data:
+                # 填充数据
+                temp = {}
+                temp["id"] = r.id
+                temp["asset_id"] = r.asset_id
+                temp["part_type"] = r.flow_type
+                temp["part_config"] = r.flow_config
+                temp["extra"] = r.extra
+                temp["description"] = r.description
+                # 加入列表
+                ret.append(temp)
+            # 返回数据
+            return ret
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return None

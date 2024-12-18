@@ -128,6 +128,17 @@ class AssetCustomersInfo(Base):
     description = Column(String(length=255), nullable=True)
 
 
+# 资产设备的流入流出信息对象
+class AssetFlowsInfo(Base):
+    __tablename__ = "ops_assets_flows_info"
+
+    id = Column(String(length=128), primary_key= True, nullable=False, index=True, unique=False)
+    asset_id = Column(String(length=128), nullable=True)
+    flow_type = Column(String(length=128), nullable=True)
+    flow_config = Column(String(length=128), nullable=True)
+    description = Column(String(length=255), nullable=True)
+    extra = Column(Text)
+
 # 资产对象
 # class Asset(Base) = Table(
 # "ops_assets",

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from typing_extensions import assert_type
 
 from db.models.asset.models import Asset, AssetBasicInfo, AssetPartsInfo, AssetManufacturesInfo, AssetPositionsInfo, \
-    AssetContractsInfo, AssetBelongsInfo, AssetCustomersInfo, AssetType
+    AssetContractsInfo, AssetBelongsInfo, AssetCustomersInfo, AssetType, AssetFlowsInfo
 
 from enum import Enum
 
@@ -221,7 +221,7 @@ class AssetSQL:
 
 
     @classmethod
-    def create_asset(cls, basic_info, manufacture_info, position_info, contract_info, belong_info, customer_info, part_info):
+    def create_asset(cls, basic_info, manufacture_info, position_info, contract_info, belong_info, customer_info, part_info, flow_info):
         Session = sessionmaker(bind=engine, expire_on_commit=False)
         session = Session()
         with session.begin():
@@ -238,6 +238,8 @@ class AssetSQL:
                 session.add(customer_info)
             if part_info:
                 session.add_all(part_info)
+            if flow_info:
+                session.add_all(flow_info)
 
 
 
@@ -320,19 +322,57 @@ class AssetSQL:
 
     # 资产类型查询列表
     @classmethod
-    def list_asset_type(cls, asset_type_name=None):
+    def list_asset_type(cls, id, parent_id, asset_type_name, asset_type_name_zh):
         Session = sessionmaker(bind=engine,expire_on_commit=False)
         session = Session()
         with session.begin():
             query = session.query(AssetType)
             # 数据库查询参数
+            if id is not None:
+                query = query.filter(AssetType.id == id)
+            if parent_id is not None:
+                query = query.filter(AssetType.parent_id == parent_id)
             if asset_type_name is not None:
                 query = query.filter(AssetType.asset_type_name.like('%' + asset_type_name + '%'))
+            if asset_type_name_zh is not None:
+                query = query.filter(AssetType.asset_type_name_zh.like('%' + asset_type_name_zh + '%'))
+            # 默认按照序号排序
+            query = query.order_by(AssetType.queue.asc())
             # 查询所有数据
             assert_type_list = query.all()
             # 返回
             return assert_type_list
 
+
+    @classmethod
+    def create_asset_type(cls, asset_type):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.add(asset_type)
+
+
+    @classmethod
+    def delete_asset_type(cls, asset_type_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            # 删除资产类型信息
+            session.query(AssetType).filter(AssetType.id == asset_type_id).delete()
+
+    @classmethod
+    def get_asset_type_by_id(cls, asset_type_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.query(AssetType).filter(AssetType.id == asset_type_id).first()
+
+    @classmethod
+    def update_asset_type(cls, asset_type_info):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.merge(asset_type_info)
 
     # 资产配件查询列表
     @classmethod
@@ -412,3 +452,19 @@ class AssetSQL:
         session = Session()
         with session.begin():
             return session.query(AssetPartsInfo).filter(AssetPartsInfo.id == asset_part_id).first()
+
+
+    # 资产流量查询列表
+    @classmethod
+    def list_asset_flow(cls, asset_id=None):
+        Session = sessionmaker(bind=engine,expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            query = session.query(AssetFlowsInfo)
+            # 数据库查询参数
+            if asset_id is not None:
+                query = query.filter(AssetFlowsInfo.asset_id == asset_id)
+            # 查询所有数据
+            assert_part_list = query.all()
+            # 返回
+            return assert_part_list
