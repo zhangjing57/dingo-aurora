@@ -134,8 +134,11 @@ class AssetFlowsInfo(Base):
 
     id = Column(String(length=128), primary_key= True, nullable=False, index=True, unique=False)
     asset_id = Column(String(length=128), nullable=True)
-    flow_type = Column(String(length=128), nullable=True)
-    flow_config = Column(String(length=128), nullable=True)
+    port = Column(String(length=128), nullable=True)
+    label = Column(String(length=255), nullable=True)
+    opposite_asset_id = Column(String(length=128), nullable=True)
+    opposite_port = Column(String(length=128), nullable=True)
+    opposite_label = Column(String(length=255), nullable=True)
     description = Column(String(length=255), nullable=True)
     extra = Column(Text)
 

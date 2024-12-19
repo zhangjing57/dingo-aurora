@@ -9,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 
 from openpyxl.reader.excel import load_workbook
+from openpyxl.styles import Border, Side
 from typing_extensions import assert_type
 
 from api.model.assets import AssetCreateApiModel
@@ -25,14 +26,22 @@ from utils.datetime import change_excel_date_to_timestamp
 
 LOG = log.getLogger(__name__)
 
+# 定义边框样式
+thin_border = Border(
+    left=Side(border_style="thin", color="000000"),  # 左边框
+    right=Side(border_style="thin", color="000000"),  # 右边框
+    top=Side(border_style="thin", color="000000"),  # 上边框
+    bottom=Side(border_style="thin", color="000000")  # 下边框
+)
+
 class AssetsService:
 
     # 查询资产列表
-    def list_assets(self, asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs):
+    def list_assets(self, asset_id, asset_ids, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs):
         # 业务逻辑
         try:
             # 按照条件从数据库中查询数据
-            count, data = AssetSQL.list_asset(asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
+            count, data = AssetSQL.list_asset(asset_id, asset_ids, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
             # 数据处理
             ret = []
             # 遍历
@@ -43,6 +52,7 @@ class AssetsService:
                 temp["asset_type_id"] = r.asset_type_id
                 temp["asset_category"] = r.asset_category
                 temp["asset_type"] = r.asset_type
+                temp["asset_type_name_zh"] = r.asset_type_name_zh
                 temp["asset_name"] = r.name
                 temp["equipment_number"] = r.equipment_number
                 temp["sn_number"] = r.sn_number
@@ -98,8 +108,8 @@ class AssetsService:
                 temp["asset_customer"] = temp_cutomer
                 # 配件信息
                 temp["asset_part"] = self.list_assets_parts(r.id)
-                # 流量信息
-                temp["asset_flow"] = self.list_assets_flows(r.id)
+                # 流量信息 列表上不需要
+                # temp["asset_flow"] = self.list_assets_flows(r.id)
                 # 加入列表
                 ret.append(temp)
 
@@ -152,16 +162,24 @@ class AssetsService:
         try:
             # 数据校验
             # 1、名称空
-            if asset.asset_name is None:
+            if asset.asset_name is None or asset.asset_type_id is None:
                 raise Exception
             # 2、重名
-            count, _ = AssetSQL.list_asset(None, asset.asset_name, None,None, None, None, None, None, None, None, None, None, None, 1,10,None,None)
+            count, _ = AssetSQL.list_asset(None,None, asset.asset_name, None,None, None, None, None, None, None, None, None, None, None, 1,10,None,None)
             if count > 0:
                 LOG.error("asset name exist")
                 raise Exception
+            # 3. 查询资产类型
+            asset_type_list = AssetSQL.list_asset_type(asset.asset_type_id, None, None, None)
+            if not asset_type_list:
+                LOG.error("asset type not exist")
+                raise Exception
+            asset_type_name = asset_type_list[0].asset_type_name
             # 数据组装
             # 1、资产基础信息
             asset_basic_info_db = self.convert_asset_basic_info_db(asset)
+            asset_basic_info_db.asset_type = asset_type_name
+            asset_basic_info_db.asset_category = asset_type_name.split("_")[0]
             # 资产的id重新生成覆盖
             asset.asset_id = asset_basic_info_db.id
             asset_id = asset_basic_info_db.id
@@ -178,7 +196,7 @@ class AssetsService:
             # 7、资产配件信息
             asset_part_info_db = self.convert_asset_part_info_db(asset)
             # 8、资产流量信息
-            asset_flow_info_db = self.convert_asset_flow_info_db(asset)
+            asset_flow_info_db = None # self.convert_asset_flow_info_db(asset)
             # 保存对象
             AssetSQL.create_asset(asset_basic_info_db, asset_manufacture_info_db, asset_position_info_db, asset_contract_info_db, asset_belong_info_db, asset_customer_info_db, asset_part_info_db, asset_flow_info_db)
         except Exception as e:
@@ -266,8 +284,11 @@ class AssetsService:
             asset_flow_info_db = AssetFlowsInfo(
                 id=uuid.uuid4().hex,
                 asset_id=asset.asset_id,
-                flow_type=temp.flow_type,
-                flow_config=temp.flow_config,
+                port=asset.port,
+                label=asset.label,
+                opposite_asset_id=asset.opposite_asset_id,
+                opposite_port=asset.opposite_label,
+                opposite_label=asset.opposite_label,
                 extra=json.dumps(temp.extra),
                 description=temp.description,
             )
@@ -361,7 +382,7 @@ class AssetsService:
         # 详情
         try:
             # 根据id查询
-            res = self.list_assets(asset_id, None, None,None,None, None, None, None, None, None, None, None, None, 1, 10, None, None)
+            res = self.list_assets(asset_id, None,None, None,None,None, None, None, None, None, None, None, None, None, 1, 10, None, None)
             # 空
             if not res or not res.get("data"):
                 return None
@@ -617,7 +638,7 @@ class AssetsService:
         page = 1
         page_size = 100
         # 查询一页
-        res = self.list_assets(None, None, None, None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+        res = self.list_assets(None,None, None, None, None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
         while res and res['data']:
             # 写入数据
             for temp in res['data']:
@@ -637,7 +658,7 @@ class AssetsService:
                     for temp_part in temp['asset_part']:
                         # 表头存在
                         if asset_part_info_columns.get(temp_part['part_type'], None):
-                            temp_part_data[asset_part_info_columns.get(temp_part['part_type'], None)] = temp_part['part_name']
+                            temp_part_data[asset_part_info_columns.get(temp_part['part_type'], None)] = temp_part['part_config']
                     # 数据追加
                     excel_part_data.append(temp_part_data)
                 # 加入excel导出数据列表
@@ -647,7 +668,7 @@ class AssetsService:
                 break
             # 查询下一页
             page = page + 1
-            res = self.list_assets(None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+            res = self.list_assets(None,None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
         try:
             # 加载模板文件
             book = load_workbook(result_file_path)
@@ -675,7 +696,74 @@ class AssetsService:
             raise e
 
 
-
+    def create_asset_excel_4select(self, result_file_path, ids):
+        # 模板路径
+        template_file = os.getcwd() + ASSET_TEMPLATE_FILE_DIR
+        # 复制模板文件到临时目录
+        shutil.copy2(template_file, result_file_path)
+        # 导出的excel数据
+        excel_asset_data = []
+        excel_part_data = []
+        # 读取数据数据
+        page = 1
+        page_size = 100
+        # 查询一页
+        res = self.list_assets(None, ids,None, None, None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+        while res and res['data']:
+            # 写入数据
+            for temp in res['data']:
+                # df.loc[index,"设备名称"] = temp["asset_name"]
+                # 下一行
+                # index = index + 1
+                # 修改或添加新数据
+                temp_asset_data = {'机架': temp['asset_position']['frame_position'],'机柜': temp['asset_position']['cabinet_position'],'U位': temp['asset_position']['u_position'],
+                                   '设备名称': temp['asset_name'],'设备型号': temp['equipment_number'],'资产编号': temp['asset_number'],'序列号': temp['sn_number'],
+                                   '部门': temp['asset_belong']['department_name'],'负责人': temp['asset_belong']['user_name'],'主机名': None,'IP': None,
+                                   'IDRAC': None,'用途': None,'密码': None,'操作系统': None,
+                                   '购买日期': temp['asset_contract']['purchase_date'],'厂商': temp['asset_manufacturer']['name'],'批次': temp['asset_contract']['batch_number'],'备注': temp['asset_description'],}
+                # 配件数据
+                if temp['asset_part']:
+                    temp_part_data = {'资产编号': temp['asset_number'],}
+                    # 遍历配件
+                    for temp_part in temp['asset_part']:
+                        # 表头存在
+                        if asset_part_info_columns.get(temp_part['part_type'], None):
+                            temp_part_data[asset_part_info_columns.get(temp_part['part_type'], None)] = temp_part['part_config']
+                    # 数据追加
+                    excel_part_data.append(temp_part_data)
+                # 加入excel导出数据列表
+                excel_asset_data.append(temp_asset_data)
+            # 判断总页数已经大于等于当前已经查询的页数，已经查询完成，退出循环
+            if res['totalPages'] >= page:
+                break
+            # 查询下一页
+            page = page + 1
+            res = self.list_assets(None, ids,None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+        try:
+            # 加载模板文件
+            book = load_workbook(result_file_path)
+            sheet = book['asset']  # 默认使用第一个工作表
+            # 确定起始写入行号
+            start_row = 2  # 自动追加到最后一行之后
+            # 写入数据到模板文件
+            for idx, row in pd.DataFrame(excel_asset_data).iterrows():
+                for col_idx, value in enumerate(row, start=1):  # 列从 1 开始
+                    sheet.cell(row=start_row + idx, column=col_idx, value=value).border = thin_border
+            # 保存修改
+            # book.save(result_file_path)
+            # 配件sheet
+            part_sheet = book['part']
+            start_row = 2  # 自动追加到最后一行之后
+            # 写入数据到模板文件
+            for idx, row in pd.DataFrame(excel_part_data).iterrows():
+                for col_idx, value in enumerate(row, start=1):  # 列从 1 开始
+                    part_sheet.cell(row=start_row + idx, column=col_idx, value=value).border = thin_border
+                    # 保存修改
+            book.save(result_file_path)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
 
 
     def update_asset(self, asset_id, asset):
@@ -1216,6 +1304,38 @@ class AssetsService:
                 temp["part_config"] = r.flow_config
                 temp["extra"] = r.extra
                 temp["description"] = r.description
+                # 加入列表
+                ret.append(temp)
+            # 返回数据
+            return ret
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return None
+
+
+    # 以下是资产-网络设备流相关的service
+    # 查询资产类型列表
+    def list_assets_flows(self, asset_id):
+        # 业务逻辑
+        try:
+            # 按照条件从数据库中查询数据
+            data = AssetSQL.list_asset_flow(asset_id)
+            # 数据处理
+            ret = []
+            # 遍历
+            for r in data:
+                # 填充数据
+                temp = {}
+                temp["id"] = r.id
+                temp["asset_id"] = r.asset_id
+                temp["port"] = r.port
+                temp["label"] = r.label
+                temp["opposite_asset_id"] = r.opposite_asset_id
+                temp["opposite_port"] = r.opposite_port
+                temp["opposite_label"] = r.opposite_label
+                temp["description"] = r.description
+                temp["extra"] = r.extra
                 # 加入列表
                 ret.append(temp)
             # 返回数据

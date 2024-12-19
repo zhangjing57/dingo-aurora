@@ -13,12 +13,27 @@ from api.model.assets import AssetCreateApiModel, AssetManufacturerApiModel, Ass
     AssetPartApiModel, AssetTypeApiModel
 from api.response import ResponseModel, success_response
 from services.assets import AssetsService
-from utils.constant import EXCEL_TEMP_DIR, ASSET_TEMPLATE_ASSET_SHEET, ASSET_TEMPLATE_PART_SHEET
+from utils.constant import EXCEL_TEMP_DIR, ASSET_TEMPLATE_ASSET_SHEET, ASSET_TEMPLATE_PART_SHEET, \
+    ASSET_TEMPLATE_ASSET_TYPE
 from utils.datetime import format_unix_timestamp, format_d8q_timestamp
 
 router = APIRouter()
 assert_service = AssetsService()
 
+# 以下是资产-网络设备的流表信息的类型相关的接口 start
+@router.get("/assets/flows", summary="查询资产网络设备流信息列表", description="根据各种条件查询资产网络设备流信息列表")
+async def list_assets_flows(
+        asset_id:str = Query(None, description="资产id")):
+    # 接收查询参数
+    # 返回数据接口
+    try:
+        # 查询成功
+        result = assert_service.list_assets_flows(asset_id)
+        return result
+    except Exception as e:
+        return None
+
+# 以下是资产的类型相关的接口 start
 
 # 以下是资产的类型相关的接口 start
 
@@ -98,6 +113,30 @@ async def download_assets_xlsx():
         )
     return {"error": "File not found"}
 
+@router.post("/assets/download", summary="下载资产信息", description="根据选择好的数据下载对应的资产文件")
+async def download_assets_xlsx_4select(ids:str):
+    # 把选中的id的字符串数据库中的资产数据导出资产信息数据
+    result_file_name = "asset_" + format_d8q_timestamp() + ".xlsx"
+    print(result_file_name)
+    # 导出文件路径
+    result_file_path = EXCEL_TEMP_DIR + result_file_name
+    # 生成文件
+    # 读取excel文件内容
+    try:
+        # 存入一行
+        assert_service.create_asset_excel_4select(result_file_path, ids)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+    # 文件存在则下载
+    if os.path.exists(result_file_path):
+        return FileResponse(
+            path=result_file_path,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=result_file_name  # 下载时显示的文件名
+        )
+    return {"error": "File not found"}
+
 
 # @router.get("/assets", response_model=ResponseModel[dict])
 @router.get("/assets", summary="查询资产列表", description="根据各种条件分页查询资产列表数据")
@@ -123,7 +162,7 @@ async def list_assets(
     # 返回数据接口
     try:
         # 查询成功
-        result = assert_service.list_assets(asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
+        result = assert_service.list_assets(asset_id, None, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page, page_size, sort_keys, sort_dirs)
         return result
         # return success_response(result)
     except Exception as e:
@@ -207,17 +246,22 @@ async def download_asset_template_xlsx(template_id:str):
     return {"error": "File not found"}
 
 
-@router.post("/assets/upload", summary="上传资产文件", description="上传资产文件创建对应数据")
-async def upload_asset_xlsx(file: UploadFile = File(...)):
+@router.post("/assets/upload/{asset_type}", summary="上传资产文件", description="上传资产文件创建对应数据")
+async def upload_asset_xlsx(asset_type: str, file: UploadFile = File(...)):
     # 按照资产模板导入数据
-    # 文件是否是excel
-    if not file.filename.endswith('.xlsx'):
-        return "文件格式错误"
-    # 文件大小
-    if file.size > 1024 * 1024 * 5:
-        return "文件大小不能超过5MB！"
-    # 读取excel文件内容
     try:
+        # 资产的类型不能为空
+        if not asset_type:
+            return "asset type is empty"
+        # 位置
+        if asset_type not in ASSET_TEMPLATE_ASSET_TYPE:
+            return "asset type is incompatible"
+        # 文件是否是excel
+        if not file.filename.endswith('.xlsx'):
+            return "file suffix is xlsx"
+        # 文件大小
+        if file.size > 1024 * 1024 * 5:
+            return "The file size cannot exceed 5MB!"
         # 读取资产的数据
         contents = await file.read()
         buffer = BytesIO(contents)

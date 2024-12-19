@@ -4,10 +4,14 @@
 EXCEL_TEMP_DIR = "/home/dingoops/temp_excel/"
 # 资产模板文件
 ASSET_TEMPLATE_FILE_DIR = "/api/template/asset_template.xlsx"
+# 导入的资产设备类型
+ASSET_TEMPLATE_ASSET_TYPE = ("server", "network")
 # 资产设备sheet页名称
 ASSET_TEMPLATE_ASSET_SHEET = "asset"
 # 资产配件sheet页名称
 ASSET_TEMPLATE_PART_SHEET = "part"
+# 资产网络sheet页名称
+ASSET_TEMPLATE_NETWORK_SHEET = "network"
 
 # 资产设备状态 0：空闲、1：备机、2：分配、3：故障
 asset_status_dict = ([(0, "空闲"), (0, "备机"), (2, "分配"), (3, "故障")])

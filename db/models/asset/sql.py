@@ -32,7 +32,7 @@ class AssetSQL:
             session.add(new_user)
 
     @classmethod
-    def list_asset(cls, asset_id, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
+    def list_asset(cls, asset_id, asset_ids, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
         Session = sessionmaker(bind=engine,expire_on_commit=False)
         session = Session()
         with session.begin():
@@ -48,6 +48,7 @@ class AssetSQL:
                                   AssetBasicInfo.asset_status.label("asset_status"),
                                   AssetBasicInfo.description.label("description"),
                                   AssetBasicInfo.extra.label("extra"),
+                                  AssetType.asset_type_name_zh.label("asset_type_name_zh"),
                                   AssetManufacturesInfo.id.label("manufacture_id"),
                                   AssetManufacturesInfo.name.label("manufacture_name"),
                                   AssetManufacturesInfo.description.label("manufacture_description"),
@@ -82,6 +83,7 @@ class AssetSQL:
                                   )
             # 外连接
             query = query.outerjoin(AssetManufacturesInfo, AssetManufacturesInfo.asset_id == AssetBasicInfo.id). \
+                outerjoin(AssetType, AssetType.id == AssetBasicInfo.asset_type_id). \
                 outerjoin(AssetPositionsInfo, AssetPositionsInfo.asset_id == AssetBasicInfo.id). \
                 outerjoin(AssetContractsInfo, AssetContractsInfo.asset_id == AssetBasicInfo.id). \
                 outerjoin(AssetBelongsInfo, AssetBelongsInfo.asset_id == AssetBasicInfo.id). \
@@ -91,6 +93,8 @@ class AssetSQL:
                 query = query.filter(AssetBasicInfo.name.like('%' + asset_name + '%'))
             if asset_id is not None and len(asset_id) > 0 :
                 query = query.filter(AssetBasicInfo.id == asset_id)
+            if asset_ids is not None and len(asset_ids) > 0 :
+                query = query.filter(AssetBasicInfo.id.in_(asset_ids.split(',')))
             if asset_category is not None and len(asset_category) > 0 :
                 query = query.filter(AssetBasicInfo.asset_category == asset_category)
             if asset_type is not None and len(asset_type) > 0 :
@@ -465,6 +469,6 @@ class AssetSQL:
             if asset_id is not None:
                 query = query.filter(AssetFlowsInfo.asset_id == asset_id)
             # 查询所有数据
-            assert_part_list = query.all()
+            assert_flow_list = query.all()
             # 返回
-            return assert_part_list
+            return assert_flow_list
