@@ -19,9 +19,11 @@ from db.models.asset.sql import AssetSQL
 from math import ceil
 from oslo_log import log
 
-from utils.constant import ASSET_TEMPLATE_FILE_DIR, asset_equipment_columns, asset_basic_info_columns, \
+from utils.constant import ASSET_SERVER_TEMPLATE_FILE_DIR, asset_equipment_columns, asset_basic_info_columns, \
     asset_manufacture_info_columns, asset_position_info_columns, asset_contract_info_columns, asset_belong_info_columns, \
-    asset_customer_info_columns, asset_part_info_columns
+    asset_customer_info_columns, asset_part_info_columns, asset_network_basic_info_columns, \
+    asset_network_manufacture_info_columns, asset_network_position_info_columns, asset_network_basic_info_extra_columns, \
+    ASSET_NETWORK_TEMPLATE_FILE_DIR, ASSET_NETWORK_FLOW_TEMPLATE_FILE_DIR
 from utils.datetime import change_excel_date_to_timestamp
 
 LOG = log.getLogger(__name__)
@@ -196,7 +198,7 @@ class AssetsService:
             # 7、资产配件信息
             asset_part_info_db = self.convert_asset_part_info_db(asset)
             # 8、资产流量信息
-            asset_flow_info_db = None # self.convert_asset_flow_info_db(asset)
+            asset_flow_info_db = None # self.convert_asset_flow_info_db_from_asset(asset)
             # 保存对象
             AssetSQL.create_asset(asset_basic_info_db, asset_manufacture_info_db, asset_position_info_db, asset_contract_info_db, asset_belong_info_db, asset_customer_info_db, asset_part_info_db, asset_flow_info_db)
         except Exception as e:
@@ -272,7 +274,7 @@ class AssetsService:
 
 
     # 资产创建时流量对象数据转换
-    def convert_asset_flow_info_db(self, asset):
+    def convert_asset_flow_info_db_from_asset(self, asset):
         # 判空
         if asset.asset_flow is None:
             return None
@@ -447,6 +449,8 @@ class AssetsService:
         try:
             # 初始化数据对象
             asset = self.init_empty_asset_api_model()
+            asset.asset_type_id = "8fb707d8-b07e-11ef-90c8-44a842237864"
+            asset.asset_category = "SERVER"
             # 从excel中加载基础信息数据
             for basic_key, basic_column in asset_basic_info_columns.items():
                 # 判断excel的数据是非nan
@@ -519,6 +523,53 @@ class AssetsService:
             traceback.print_exc()
 
 
+    def import_asset_network(self, row):
+        # 存入一行
+        try:
+            # 初始化数据对象
+            asset = self.init_empty_asset_api_model()
+            asset.asset_type_id = "8fbc77f1-b07e-11ef-90c8-44a842237864"
+            asset.asset_category = "NETWORK"
+            # 从网络设备的excel中加载基础信息数据
+            for basic_key, basic_column in asset_network_basic_info_columns.items():
+                # 判断excel的数据是非nan
+                if pd.notna(row[basic_column]):
+                    asset.__setattr__(basic_key, row[basic_column])
+            # 从网络设备的excel中加载基础信息的扩展信息数据
+            extra = {}
+            for basic_extra_key, basic_extra_column in asset_network_basic_info_extra_columns.items():
+                # 判断excel的数据是非nan
+                if pd.notna(row[basic_extra_column]):
+                    extra[basic_extra_key] = row[basic_extra_column]
+            if extra:
+                asset.extra = extra
+            # 从网络设备的excel中加载厂商信息数据
+            for manufacture_key, manufacture_column in asset_network_manufacture_info_columns.items():
+                # 判断excel的数据是非nan
+                if pd.notna(row[manufacture_column]):
+                    asset.asset_manufacturer.__setattr__(manufacture_key, row[manufacture_column])
+            # 从网络设备的excel中加载位置信息数据
+            for position_key, position_column in asset_network_position_info_columns.items():
+                # 判断excel的数据是非nan
+                if pd.notna(row[position_column]):
+                    asset.asset_position.__setattr__(position_key, row[position_column])
+            # 从网络设备的excel中加载合同信息数据
+            for contract_key, contract_column in asset_contract_info_columns.items():
+                # 判断excel的数据是非nan
+                if pd.notna(row.get(contract_column, None)):
+                    row_value = row[contract_column]
+                    # 购买日期单独处理
+                    if "purchase_date" == contract_key:
+                        row_value = int(row_value.timestamp() * 1000)
+                    # 赋值
+                    asset.asset_contract.__setattr__(contract_key, row_value)
+            self.create_asset(asset)
+            # 组装数据
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+
+
     # 初始化一个空的资产数据的结构对象
     def init_empty_asset_api_model(self):
         # 初始化api的model对象
@@ -526,7 +577,7 @@ class AssetsService:
             # 资产通用信息
             asset_id = uuid.uuid4().hex,
             asset_name = "Default",
-            asset_type_id = None,
+            asset_type_id = "Default",
             asset_description = None,
             # 资产基础信息
             equipment_number = None,
@@ -626,50 +677,84 @@ class AssetsService:
         return asset_part
 
 
-    def create_asset_excel(self, result_file_path):
+    def create_asset_excel(self, asset_type, result_file_path):
+        # 判空
+        if not asset_type:
+            return None
         # 模板路径
-        template_file = os.getcwd() + ASSET_TEMPLATE_FILE_DIR
-        # 复制模板文件到临时目录
-        shutil.copy2(template_file, result_file_path)
-        # 导出的excel数据
-        excel_asset_data = []
-        excel_part_data = []
-        # 读取数据数据
-        page = 1
-        page_size = 100
-        # 查询一页
-        res = self.list_assets(None,None, None, None, None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
-        while res and res['data']:
-            # 写入数据
-            for temp in res['data']:
-                # df.loc[index,"设备名称"] = temp["asset_name"]
-                # 下一行
-                # index = index + 1
-                # 修改或添加新数据
-                temp_asset_data = {'机架': temp['asset_position']['frame_position'],'机柜': temp['asset_position']['cabinet_position'],'U位': temp['asset_position']['u_position'],
-                             '设备名称': temp['asset_name'],'设备型号': temp['equipment_number'],'资产编号': temp['asset_number'],'序列号': temp['sn_number'],
-                             '部门': temp['asset_belong']['department_name'],'负责人': temp['asset_belong']['user_name'],'主机名': None,'IP': None,
-                             'IDRAC': None,'用途': None,'密码': None,'操作系统': None,
-                             '购买日期': temp['asset_contract']['purchase_date'],'厂商': temp['asset_manufacturer']['name'],'批次': temp['asset_contract']['batch_number'],'备注': temp['asset_description'],}
-                # 配件数据
-                if temp['asset_part']:
-                    temp_part_data = {'资产编号': temp['asset_number'],}
-                    # 遍历配件
-                    for temp_part in temp['asset_part']:
-                        # 表头存在
-                        if asset_part_info_columns.get(temp_part['part_type'], None):
-                            temp_part_data[asset_part_info_columns.get(temp_part['part_type'], None)] = temp_part['part_config']
-                    # 数据追加
-                    excel_part_data.append(temp_part_data)
-                # 加入excel导出数据列表
-                excel_asset_data.append(temp_asset_data)
-            # 判断总页数已经大于等于当前已经查询的页数，已经查询完成，退出循环
-            if res['totalPages'] >= page:
-                break
-            # 查询下一页
-            page = page + 1
-            res = self.list_assets(None,None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+        current_template_file = None
+        if asset_type == "server":
+            current_template_file = os.getcwd() + ASSET_SERVER_TEMPLATE_FILE_DIR
+        elif asset_type == "network":
+            current_template_file = os.getcwd() + ASSET_NETWORK_TEMPLATE_FILE_DIR
+        elif asset_type == "network_flow":
+            current_template_file = os.getcwd() + ASSET_NETWORK_FLOW_TEMPLATE_FILE_DIR
+        else:
+            pass
+        # 对应类型的模板不存在
+        if current_template_file is None:
+            return None
+        # 生成不同资产类型的文件
         try:
+            # 复制模板文件到临时目录
+            shutil.copy2(current_template_file, result_file_path)
+            # 服务器类型的文件
+            if asset_type == "server":
+                self.create_asset_server_excel(result_file_path)
+            # 网络类型的文件
+            elif asset_type == "network":
+                self.create_asset_network_excel(result_file_path)
+            # 网络类型流入流出的文件
+            elif asset_type == "network_flow":
+                self.create_asset_network_flow_excel(result_file_path)
+            else:
+                pass
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
+
+    def create_asset_server_excel(self, result_file_path):
+        try:
+            # 导出的excel数据
+            excel_asset_data = []
+            excel_part_data = []
+            # 读取数据数据
+            page = 1
+            page_size = 100
+            # 查询一页
+            res = self.list_assets(None,None, None, "SERVER", None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+            while res and res['data']:
+                # 写入数据
+                for temp in res['data']:
+                    # df.loc[index,"设备名称"] = temp["asset_name"]
+                    # 下一行
+                    # index = index + 1
+                    # 修改或添加新数据
+                    temp_asset_data = {'机架': temp['asset_position']['frame_position'],'机柜': temp['asset_position']['cabinet_position'],'U位': temp['asset_position']['u_position'],
+                                       '设备名称': temp['asset_name'],'设备型号': temp['equipment_number'],'资产编号': temp['asset_number'],'序列号': temp['sn_number'],
+                                       '部门': temp['asset_belong']['department_name'],'负责人': temp['asset_belong']['user_name'],'主机名': None,'IP': None,
+                                       'IDRAC': None,'用途': None,'密码': None,'操作系统': None,
+                                       '购买日期': temp['asset_contract']['purchase_date'],'厂商': temp['asset_manufacturer']['name'],'批次': temp['asset_contract']['batch_number'],'备注': temp['asset_description'],}
+                    # 配件数据
+                    if temp['asset_part']:
+                        temp_part_data = {'资产编号': temp['asset_number'],}
+                        # 遍历配件
+                        for temp_part in temp['asset_part']:
+                            # 表头存在
+                            if asset_part_info_columns.get(temp_part['part_type'], None):
+                                temp_part_data[asset_part_info_columns.get(temp_part['part_type'], None)] = temp_part['part_config']
+                        # 数据追加
+                        excel_part_data.append(temp_part_data)
+                    # 加入excel导出数据列表
+                    excel_asset_data.append(temp_asset_data)
+                # 判断总页数已经大于等于当前已经查询的页数，已经查询完成，退出循环
+                if res['totalPages'] >= page:
+                    break
+                # 查询下一页
+                page = page + 1
+                res = self.list_assets(None,None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
             # 加载模板文件
             book = load_workbook(result_file_path)
             sheet = book.active  # 默认使用第一个工作表
@@ -696,9 +781,52 @@ class AssetsService:
             raise e
 
 
+    def create_asset_network_excel(self, result_file_path):
+        try:
+            # 导出的excel数据
+            excel_asset_network_data = []
+            # 读取数据数据
+            page = 1
+            page_size = 100
+            # 查询一页
+            res = self.list_assets(None,None, None, "NETWORK", None,None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+            while res and res['data']:
+                # 写入数据
+                for temp in res['data']:
+                    # 修改或添加新数据
+                    temp_asset_data = {'机柜': temp['asset_position']['cabinet_position'],'U位': temp['asset_position']['u_position'],
+                                       '设备名称': temp['asset_name'],'设备型号': temp['equipment_number'],'资产编号': temp['asset_number'],
+                                       '主机名': None,'管理地址': None,'带外网关': None,'m-lag mac': None,'网络设备角色': None,'序号': None,
+                                       'loopback': None,'vlanifv4': None,'预留': None,'BGP_AS': None,'用途': None,
+                                       '采购合同号': temp['asset_contract']['contract_number'],'厂商': temp['asset_manufacturer']['name'],}
+                    # 加入excel导出数据列表
+                    excel_asset_network_data.append(temp_asset_data)
+                # 判断总页数已经大于等于当前已经查询的页数，已经查询完成，退出循环
+                if res['totalPages'] >= page:
+                    break
+                # 查询下一页
+                page = page + 1
+                res = self.list_assets(None,None, None,None,None, None, None, None, None, None, None, None, None, None, page, page_size, None, None)
+            # 加载模板文件
+            book = load_workbook(result_file_path)
+            sheet = book.active  # 默认使用第一个工作表
+            # 确定起始写入行号
+            start_row = 2  # 自动追加到最后一行之后
+            # 写入数据到模板文件
+            for idx, row in pd.DataFrame(excel_asset_network_data).iterrows():
+                for col_idx, value in enumerate(row, start=1):  # 列从 1 开始
+                    sheet.cell(row=start_row + idx, column=col_idx, value=value)
+            # 保存修改
+            book.save(result_file_path)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
+
     def create_asset_excel_4select(self, result_file_path, ids):
         # 模板路径
-        template_file = os.getcwd() + ASSET_TEMPLATE_FILE_DIR
+        template_file = os.getcwd() + ASSET_SERVER_TEMPLATE_FILE_DIR
         # 复制模板文件到临时目录
         shutil.copy2(template_file, result_file_path)
         # 导出的excel数据
@@ -933,8 +1061,8 @@ class AssetsService:
         try:
             # 业务校验 对象非空，数据线填充
             # 判空
-            if asset_type_api_model is None or asset_type_api_model.asset_type_name is None or asset_type_api_model.asset_type_name_zh is None:
-                return None
+            if asset_type_api_model is None or asset_type_api_model.asset_type_name is None:
+                raise Exception
             # 数据对象转换
             asset_type_db = self.convert_asset_type_info_db(asset_type_api_model)
             # 父id校验
@@ -946,12 +1074,21 @@ class AssetsService:
                 if not data:
                     LOG.error("parent not exist")
                     raise Exception
+            if asset_type_db.asset_type_name:
+                # 查询名称重复的类型数据
+                data = AssetSQL.list_asset_type(None, None, asset_type_db.asset_type_name, None)
+                # 如果数据已经存在
+                if data:
+                    for temp_asset_type in data:
+                        if asset_type_db.asset_type_name == temp_asset_type.asset_type_name:
+                            LOG.error("asset type exist")
+                            raise Exception
                 # 获取数据
-                parent_asset_type_db = data[0]
+                # parent_asset_type_db = data[0]
                 # 英文名称匹配校验
-                if not asset_type_db.asset_type_name.startswith(parent_asset_type_db.asset_type_name):
-                    LOG.error("asset type name is incompatible")
-                    raise Exception
+                # if not asset_type_db.asset_type_name.startswith(parent_asset_type_db.asset_type_name):
+                #     LOG.error("asset type name is incompatible")
+                #     raise Exception
             # 数据入库
             AssetSQL.create_asset_type(asset_type_db)
             # 返回
@@ -1042,9 +1179,20 @@ class AssetsService:
             if assert_type_db is None:
                 return None
             # 填充需要修改的数据
-            # 中文名称
-            if asset_type.asset_type_name_zh is not None and len(asset_type.asset_type_name_zh) > 0:
-                assert_type_db.asset_type_name_zh = asset_type.asset_type_name_zh
+            # 英文名称
+            if asset_type.asset_type_name is not None and len(asset_type.asset_type_name) > 0:
+                # 名称重复校验
+                if asset_type.asset_type_name != assert_type_db.asset_type_name:
+                    # 查询名称重复的类型数据
+                    data = AssetSQL.list_asset_type(None, None, asset_type.asset_type_name, None)
+                    # 如果数据已经存在
+                    if data:
+                        for temp_asset_type in data:
+                            if asset_type.asset_type_name == temp_asset_type.asset_type_name:
+                                LOG.error("asset type exist")
+                                raise Exception
+                # 校验通过赋值
+                assert_type_db.asset_type_name = asset_type.asset_type_name
             # 描述
             if asset_type.description is not None and len(asset_type.description) > 0:
                 assert_type_db.description = asset_type.description
@@ -1285,7 +1433,7 @@ class AssetsService:
         return id
 
 
-    # 以下是资产流量相关方法
+    # 以下是资产-网络设备流相关的service
     # 查询资产流量列表
     def list_assets_flows(self, asset_id):
         # 业务逻辑
@@ -1300,42 +1448,20 @@ class AssetsService:
                 temp = {}
                 temp["id"] = r.id
                 temp["asset_id"] = r.asset_id
-                temp["part_type"] = r.flow_type
-                temp["part_config"] = r.flow_config
-                temp["extra"] = r.extra
-                temp["description"] = r.description
-                # 加入列表
-                ret.append(temp)
-            # 返回数据
-            return ret
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return None
-
-
-    # 以下是资产-网络设备流相关的service
-    # 查询资产类型列表
-    def list_assets_flows(self, asset_id):
-        # 业务逻辑
-        try:
-            # 按照条件从数据库中查询数据
-            data = AssetSQL.list_asset_flow(asset_id)
-            # 数据处理
-            ret = []
-            # 遍历
-            for r in data:
-                # 填充数据
-                temp = {}
-                temp["id"] = r.id
-                temp["asset_id"] = r.asset_id
+                temp["cabinet_position"] = r.cabinet_position
+                temp["u_position"] = r.u_position
                 temp["port"] = r.port
                 temp["label"] = r.label
                 temp["opposite_asset_id"] = r.opposite_asset_id
+                temp["opposite_cabinet_position"] = r.opposite_cabinet_position
+                temp["opposite_u_position"] = r.opposite_u_position
                 temp["opposite_port"] = r.opposite_port
                 temp["opposite_label"] = r.opposite_label
-                temp["description"] = r.description
+                temp["cable_type"] = r.cable_type
+                temp["cable_interface_type"] = r.cable_interface_type
+                temp["cable_length"] = r.cable_length
                 temp["extra"] = r.extra
+                temp["description"] = r.description
                 # 加入列表
                 ret.append(temp)
             # 返回数据
@@ -1344,3 +1470,110 @@ class AssetsService:
             import traceback
             traceback.print_exc()
             return None
+
+
+    # 创建网络设备的流转数据
+    def create_asset_flow(self, asset_flow_api_model):
+        # 业务逻辑
+        try:
+            # 业务校验 对象非空，数据线填充
+            # 判空
+            if asset_flow_api_model is None or asset_flow_api_model.port is None:
+                raise Exception
+            # 数据对象转换
+            asset_flow_db = self.convert_asset_flow_info_db(asset_flow_api_model)
+            # 数据入库
+            AssetSQL.create_asset_flow(asset_flow_db)
+            # 返回
+            return asset_flow_db.id
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
+    # api的model对象转换数据库对象
+    def convert_asset_flow_info_db(self, asset_flow_api_model):
+        # 判空
+        if asset_flow_api_model is None:
+            return None
+        # 数据转化为db对象
+        asset_flow_db = AssetFlowsInfo(
+            id=uuid.uuid4().hex,
+            asset_id=asset_flow_api_model.asset_id,
+            port=asset_flow_api_model.port,
+            label=asset_flow_api_model.label,
+            opposite_asset_id=asset_flow_api_model.opposite_asset_id,
+            opposite_port=asset_flow_api_model.opposite_port,
+            opposite_label=asset_flow_api_model.opposite_label,
+            cable_type=asset_flow_api_model.cable_type,
+            cable_interface_type=asset_flow_api_model.cable_interface_type,
+            cable_length=asset_flow_api_model.cable_length,
+            extra=json.dumps(asset_flow_api_model.extra),
+            description=asset_flow_api_model.description,
+        )
+        # 返回数据
+        return asset_flow_db
+
+    # 删除网络设备的流转数据
+    def delete_asset_flow_by_id(self, asset_flow_id):
+        # 业务校验
+        if asset_flow_id is None or len(asset_flow_id) <= 0:
+            raise Exception
+        # 删除
+        try:
+            # 删除对象
+            AssetSQL.delete_asset_flow(asset_flow_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+        # 成功返回id
+        return asset_flow_id
+
+    # 根据id修改网络设备的流转数据
+    def update_asset_flow_by_id(self, id, asset_flow):
+        # 业务校验
+        if asset_flow is None or id is None or len(id) <= 0:
+            raise Exception
+        try:
+            # 网络设备的流转信息
+            assert_flow_db = AssetSQL.get_asset_flow_by_id(id)
+            # 判空
+            if assert_flow_db is None:
+                raise Exception
+            # 填充需要修改的数据
+            # 端口
+            if asset_flow.port is not None and len(asset_flow.port) > 0:
+                assert_flow_db.port = asset_flow.port
+            # 标签
+            if asset_flow.label is not None and len(asset_flow.label) > 0:
+                assert_flow_db.label = asset_flow.label
+            # 对端资产id
+            if asset_flow.opposite_asset_id is not None and len(asset_flow.opposite_asset_id) > 0:
+                assert_flow_db.opposite_asset_id = asset_flow.opposite_asset_id
+            # 对端端口
+            if asset_flow.opposite_port is not None and len(asset_flow.opposite_port) > 0:
+                assert_flow_db.opposite_port = asset_flow.opposite_port
+            # 对端标签
+            if asset_flow.opposite_label is not None and len(asset_flow.opposite_label) > 0:
+                assert_flow_db.opposite_label = asset_flow.label
+            # 线缆类型
+            if asset_flow.cable_type is not None and len(asset_flow.cable_type) > 0:
+                assert_flow_db.cable_type = asset_flow.cable_type
+            # 线缆接口类型
+            if asset_flow.cable_interface_type is not None and len(asset_flow.cable_interface_type) > 0:
+                assert_flow_db.cable_interface_type = asset_flow.cable_interface_type
+            # 线缆长度
+            if asset_flow.cable_length is not None:
+                assert_flow_db.cable_length = asset_flow.cable_length
+            # 描述
+            if asset_flow.description is not None and len(asset_flow.description) > 0:
+                assert_flow_db.description = asset_flow.description
+            # 保存对象
+            AssetSQL.update_asset_flow(assert_flow_db)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+        # 成功返回id
+        return id

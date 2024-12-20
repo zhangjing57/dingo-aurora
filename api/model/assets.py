@@ -37,6 +37,9 @@ class AssetFlowApiModel(BaseModel):
     opposite_asset_id: Optional[str] = Field(None, description="对端网络设备的id")
     opposite_port: Optional[str] = Field(None, description="对端网络设备的端口")
     opposite_label: Optional[str] = Field(None, description="对端网络设备的标签")
+    cable_type:  Optional[str] = Field(None, description="线缆类型")
+    cable_interface_type:  Optional[str] = Field(None, description="线缆接口类型")
+    cable_length:  Optional[int] = Field(None, description="线缆长度")
     extra: Optional[Dict[str, Any]] = Field(None, description="扩展信息")
     description: Optional[str] = Field(None, description="备注描述")
 

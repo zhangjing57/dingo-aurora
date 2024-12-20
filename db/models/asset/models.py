@@ -139,6 +139,9 @@ class AssetFlowsInfo(Base):
     opposite_asset_id = Column(String(length=128), nullable=True)
     opposite_port = Column(String(length=128), nullable=True)
     opposite_label = Column(String(length=255), nullable=True)
+    cable_type = Column(String(length=128), nullable=True)
+    cable_interface_type = Column(String(length=128), nullable=True)
+    cable_length = Column(Integer(), nullable=True)
     description = Column(String(length=255), nullable=True)
     extra = Column(Text)
 

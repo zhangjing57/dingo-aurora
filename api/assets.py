@@ -10,11 +10,11 @@ from fastapi.responses import FileResponse
 from mako.testing.helpers import result_lines
 
 from api.model.assets import AssetCreateApiModel, AssetManufacturerApiModel, AssetUpdateStatusApiModel, \
-    AssetPartApiModel, AssetTypeApiModel
+    AssetPartApiModel, AssetTypeApiModel, AssetFlowApiModel
 from api.response import ResponseModel, success_response
 from services.assets import AssetsService
 from utils.constant import EXCEL_TEMP_DIR, ASSET_TEMPLATE_ASSET_SHEET, ASSET_TEMPLATE_PART_SHEET, \
-    ASSET_TEMPLATE_ASSET_TYPE
+    ASSET_TEMPLATE_ASSET_TYPE, ASSET_TEMPLATE_NETWORK_SHEET
 from utils.datetime import format_unix_timestamp, format_d8q_timestamp
 
 router = APIRouter()
@@ -33,7 +33,44 @@ async def list_assets_flows(
     except Exception as e:
         return None
 
-# 以下是资产的类型相关的接口 start
+@router.post("/assets/flows", summary="创建网络设备的流转数据", description="创建网络设备的流转数据")
+async def create_asset_flow(asset_flow:AssetFlowApiModel):
+    # 创建资产类型
+    try:
+        # 创建成功
+        result = assert_service.create_asset_flow(asset_flow)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset flow create error")
+
+@router.delete("/assets/flows/{id}", summary="删除网络设备的流转数据", description="根据资产id删除网络设备的流转数据")
+async def delete_asset_flow_by_id(id:str):
+    # 删除资产类型
+    try:
+        # 删除成功
+        result = assert_service.delete_asset_flow_by_id(id)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset flow delete error")
+
+@router.put("/assets/flows/{id}", summary="更新网络设备的流转数据", description="根据id更新网络设备的流转数据")
+async def update_asset_flow_by_id(id:str, asset_flow:AssetFlowApiModel):
+    # 更新资产类型
+    try:
+        # 更新成功
+        result = assert_service.update_asset_flow_by_id(id, asset_flow)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail="asset flow update error")
+
+
+# 以上是资产-网络设备的流表信息的类型相关的接口 end
 
 # 以下是资产的类型相关的接口 start
 
@@ -89,18 +126,20 @@ async def update_asset_type_by_id(id:str, asset_type:AssetTypeApiModel):
 
 # 以下是资产的类型相关的接口 end
 
-@router.get("/assets/download", summary="下载资产信息", description="根据条件下载对应的资产文件")
-async def download_assets_xlsx():
+@router.get("/assets/download", summary="下载资产信息", description="根据不同类型下载对应的资产文件")
+async def download_assets_xlsx(asset_type: str):
+    # 类型是空
+    if asset_type is None or len(asset_type) <= 0:
+        return None
     # 把数据库中的资产数据导出资产信息数据
     result_file_name = "asset_" + format_d8q_timestamp() + ".xlsx"
-    print(result_file_name)
     # 导出文件路径
     result_file_path = EXCEL_TEMP_DIR + result_file_name
     # 生成文件
     # 读取excel文件内容
     try:
-        # 存入一行
-        assert_service.create_asset_excel(result_file_path)
+        # 生成文件
+        assert_service.create_asset_excel(asset_type, result_file_path)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -113,7 +152,7 @@ async def download_assets_xlsx():
         )
     return {"error": "File not found"}
 
-@router.post("/assets/download", summary="下载资产信息", description="根据选择好的数据下载对应的资产文件")
+@router.post("/assets/download", summary="批量下载指定资产信息", description="根据选择好的数据下载对应的资产文件")
 async def download_assets_xlsx_4select(ids:str):
     # 把选中的id的字符串数据库中的资产数据导出资产信息数据
     result_file_name = "asset_" + format_d8q_timestamp() + ".xlsx"
@@ -265,18 +304,29 @@ async def upload_asset_xlsx(asset_type: str, file: UploadFile = File(...)):
         # 读取资产的数据
         contents = await file.read()
         buffer = BytesIO(contents)
-        # 1、资产设备sheet
-        df = pandas.read_excel(buffer, sheet_name=ASSET_TEMPLATE_ASSET_SHEET)
-        # 遍历
-        for _, row in df.iterrows():
-            # 存入一行
-            assert_service.import_asset(row)
-        # 2、资产设备sheet
-        df = pandas.read_excel(buffer, sheet_name=ASSET_TEMPLATE_PART_SHEET)
-        # 遍历
-        for _, row in df.iterrows():
-            # 存入一行
-            assert_service.import_asset_part(row)
+        # 服务器类型
+        if asset_type == "server":
+            # 1、资产设备sheet
+            df = pandas.read_excel(buffer, sheet_name=ASSET_TEMPLATE_ASSET_SHEET)
+            # 遍历
+            for _, row in df.iterrows():
+                # 存入一行
+                assert_service.import_asset(row)
+            # 2、资产设备sheet
+            df = pandas.read_excel(buffer, sheet_name=ASSET_TEMPLATE_PART_SHEET)
+            # 遍历
+            for _, row in df.iterrows():
+                # 存入一行
+                assert_service.import_asset_part(row)
+        elif asset_type == "network":
+            # 1、网络设备sheet
+            df = pandas.read_excel(buffer, sheet_name=ASSET_TEMPLATE_NETWORK_SHEET)
+            # 遍历
+            for _, row in df.iterrows():
+                # 存入一行
+                assert_service.import_asset_network(row)
+        else:
+            pass
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy import create_engine
 from typing_extensions import assert_type
 
@@ -17,6 +17,8 @@ engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3
 asset_dir_dic= {"frame_position":AssetPositionsInfo.frame_position, "asset_status":AssetBasicInfo.asset_status, "asset_name":AssetBasicInfo.name, "id": AssetBasicInfo.id}
 # 配件的所有列
 part_columns = [getattr(AssetPartsInfo, column.name).label(column.name) for column in AssetPartsInfo.__table__.columns]
+# 流的所有列
+flow_columns = [getattr(AssetFlowsInfo, column.name).label(column.name) for column in AssetFlowsInfo.__table__.columns]
 
 class AssetSQL:
 
@@ -463,12 +465,46 @@ class AssetSQL:
     def list_asset_flow(cls, asset_id=None):
         Session = sessionmaker(bind=engine,expire_on_commit=False)
         session = Session()
+        position_alias1 = aliased(AssetPositionsInfo)
         with session.begin():
-            query = session.query(AssetFlowsInfo)
-            # 数据库查询参数
+            query = session.query(*flow_columns, AssetPositionsInfo.cabinet_position.label("cabinet_position"),AssetPositionsInfo.u_position.label("u_position"),
+                                  position_alias1.cabinet_position.label("opposite_cabinet_position"), position_alias1.u_position.label("opposite_u_position"))
+            # 外连接
+            query = query.outerjoin(AssetPositionsInfo, AssetPositionsInfo.asset_id == AssetFlowsInfo.asset_id). \
+                    outerjoin(position_alias1, position_alias1.asset_id == AssetFlowsInfo.opposite_asset_id)
+                        # 数据库查询参数
             if asset_id is not None:
                 query = query.filter(AssetFlowsInfo.asset_id == asset_id)
             # 查询所有数据
             assert_flow_list = query.all()
             # 返回
             return assert_flow_list
+
+    @classmethod
+    def create_asset_flow(cls, asset_flow):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.add(asset_flow)
+
+    @classmethod
+    def delete_asset_flow(cls, asset_flow_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            # 删除网络设备流信息
+            session.query(AssetFlowsInfo).filter(AssetFlowsInfo.id == asset_flow_id).delete()
+
+    @classmethod
+    def get_asset_flow_by_id(cls, asset_flow_id):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            return session.query(AssetFlowsInfo).filter(AssetFlowsInfo.id == asset_flow_id).first()
+
+    @classmethod
+    def update_asset_flow(cls, asset_flow_info):
+        Session = sessionmaker(bind=engine, expire_on_commit=False)
+        session = Session()
+        with session.begin():
+            session.merge(asset_flow_info)
