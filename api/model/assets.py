@@ -126,6 +126,13 @@ class AssetTypeApiModel(BaseModel):
     id:  Optional[str] = Field(None, description="资产类型的id")
     parent_id:  Optional[str] = Field(None, description="资产类型的父id")
     asset_type_name:  str = Field(None, description="资产类型的英文名称, 如果父id存在，英文名称以父名称_作为开头")
-    asset_type_name_zh:  str = Field(None, description="资产类型的中文名称")
-    queue:  int = Field(None, description="资产类型的顺序号码")
-    description:  str = Field(None, description="资产类型的描述信息")
+    asset_type_name_zh:  Optional[str] = Field(None, description="资产类型的中文名称")
+    queue:  Optional[int] = Field(None, description="资产类型的顺序号码")
+    description:  Optional[str] = Field(None, description="资产类型的描述信息")
+
+# 资产批量下载的信息
+class AssetBatchDownloadApiModel(BaseModel):
+    asset_type: str = Field(None, description="资产类型")
+    asset_ids: str = Field(None, description="资产数据的id的拼装字符串")
+
+

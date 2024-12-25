@@ -6,13 +6,14 @@ from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy import create_engine
 from typing_extensions import assert_type
 
+from db.engines.mysql import get_session
 from db.models.asset.models import Asset, AssetBasicInfo, AssetPartsInfo, AssetManufacturesInfo, AssetPositionsInfo, \
     AssetContractsInfo, AssetBelongsInfo, AssetCustomersInfo, AssetType, AssetFlowsInfo
 
 from enum import Enum
 
 #链接数据库，可以使用配置文件进行定义
-engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3dEHFg@10.220.56.254:3306/dingoops?charset=utf8mb3", echo=True)
+# engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3dEHFg@10.220.56.254:3306/dingoops?charset=utf8mb3", echo=True)
 # 资产排序字段字典
 asset_dir_dic= {"frame_position":AssetPositionsInfo.frame_position, "asset_status":AssetBasicInfo.asset_status, "asset_name":AssetBasicInfo.name, "id": AssetBasicInfo.id}
 # 配件的所有列
@@ -22,21 +23,11 @@ flow_columns = [getattr(AssetFlowsInfo, column.name).label(column.name) for colu
 
 class AssetSQL:
 
-    # 数据库操作添加
-    @classmethod
-    def add_user(cls):
-        #创建会话 ，正常是公共代码
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        new_user = Asset(name='John', fullname='John Doe', nickname='johndoe')
-        #使用begin方式，自动管理会话的开启和关闭，不需要commit和close操作，中介出错的话会自动回滚
-        with session.begin():
-            session.add(new_user)
-
     @classmethod
     def list_asset(cls, asset_id, asset_ids, asset_name, asset_category, asset_type, asset_status, frame_position, cabinet_position, u_position, equipment_number, asset_number, sn_number, department_name, user_name, page=1, page_size=10, sort_keys=None, sort_dirs="asc"):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 查询语句
             query = session.query(AssetBasicInfo.id.label("id"),
@@ -144,8 +135,9 @@ class AssetSQL:
 
     @classmethod
     def list_asset_bak(cls, asset_name=None, page=1, page_size=10, field=None, dir="ASC"):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             query = session.query(Asset)
             # 数据库查询参数
@@ -170,8 +162,9 @@ class AssetSQL:
 
     @classmethod
     def list_asset_basic_info(cls, asset_name=None, page=1, page_size=10, field=None, dir="ASC"):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             query = session.query(AssetBasicInfo)
             # 数据库查询参数
@@ -196,40 +189,52 @@ class AssetSQL:
 
     @classmethod
     def get_asset_basic_info_by_id(cls, id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetBasicInfo).filter(AssetBasicInfo.id == id).first()
 
+    @classmethod
+    def get_asset_basic_info_by_catalog_name(cls, catalog, name):
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
+        with session.begin():
+            return session.query(AssetBasicInfo).filter(AssetBasicInfo.asset_category == catalog).filter(AssetBasicInfo.name == name).first()
 
     @classmethod
     def get_asset_basic_info_by_asset_number(cls, asset_number):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetBasicInfo).filter(AssetBasicInfo.asset_number == asset_number).first()
 
 
     @classmethod
     def update_asset_basic_info(cls, asset_basic_info_db):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.merge(asset_basic_info_db)
 
 
     @classmethod
     def create_asset_basic_info(cls, data):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(data)
 
 
     @classmethod
     def create_asset(cls, basic_info, manufacture_info, position_info, contract_info, belong_info, customer_info, part_info, flow_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(basic_info)
             if manufacture_info is not None:
@@ -251,8 +256,9 @@ class AssetSQL:
 
     @classmethod
     def delete_asset(cls, asset_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 删除资产基础信息
             session.query(AssetBasicInfo).filter(AssetBasicInfo.id == asset_id).delete()
@@ -272,8 +278,9 @@ class AssetSQL:
 
     @classmethod
     def list_manufacture(cls, manufacture_name=None, page=1, page_size=10, field=None, dir="ASC"):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 查询厂商表
             query = session.query(AssetManufacturesInfo)
@@ -298,30 +305,34 @@ class AssetSQL:
 
     @classmethod
     def create_manufacture(cls, manufacture_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(manufacture_info)
 
     @classmethod
     def delete_manufacture(cls, manufacture_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 删除资产的厂商信息
             session.query(AssetManufacturesInfo).filter(AssetManufacturesInfo.id == manufacture_id).delete()
 
     @classmethod
     def get_manufacture_by_id(cls, manufacture_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetManufacturesInfo).filter(AssetManufacturesInfo.id == manufacture_id).first()
 
     @classmethod
     def update_manufacture(cls, manufacture_db):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.merge(manufacture_db)
 
@@ -329,8 +340,9 @@ class AssetSQL:
     # 资产类型查询列表
     @classmethod
     def list_asset_type(cls, id, parent_id, asset_type_name, asset_type_name_zh):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             query = session.query(AssetType)
             # 数据库查询参数
@@ -352,39 +364,44 @@ class AssetSQL:
 
     @classmethod
     def create_asset_type(cls, asset_type):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(asset_type)
 
 
     @classmethod
     def delete_asset_type(cls, asset_type_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 删除资产类型信息
             session.query(AssetType).filter(AssetType.id == asset_type_id).delete()
 
     @classmethod
     def get_asset_type_by_id(cls, asset_type_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetType).filter(AssetType.id == asset_type_id).first()
 
     @classmethod
     def update_asset_type(cls, asset_type_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.merge(asset_type_info)
 
     # 资产配件查询列表
     @classmethod
     def list_asset_part(cls, asset_id=None):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             query = session.query(AssetPartsInfo)
             # 数据库查询参数
@@ -398,8 +415,9 @@ class AssetSQL:
 
     @classmethod
     def list_asset_part_page(cls, part_catalog=None, asset_id=None, name=None, page=1, page_size=10, field=None, dir="asc"):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             query = session.query(*part_columns, AssetBasicInfo.name.label("asset_name"), AssetBasicInfo.asset_number.label("asset_number"))
             # 外连接
@@ -432,49 +450,60 @@ class AssetSQL:
 
     @classmethod
     def create_asset_part(cls, asset_part_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(asset_part_info)
 
     @classmethod
     def update_asset_part(cls, asset_part_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.merge(asset_part_info)
 
     @classmethod
     def delete_asset_part(cls, asset_part_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 删除资产的厂商信息
             session.query(AssetPartsInfo).filter(AssetPartsInfo.id == asset_part_id).delete()
 
     @classmethod
     def get_asset_part_by_id(cls, asset_part_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetPartsInfo).filter(AssetPartsInfo.id == asset_part_id).first()
 
 
     # 资产流量查询列表
     @classmethod
-    def list_asset_flow(cls, asset_id=None):
-        Session = sessionmaker(bind=engine,expire_on_commit=False)
-        session = Session()
+    def list_asset_flow(cls, asset_id=None, asset_ids=None):
+        # Session = sessionmaker(bind=engine,expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         position_alias1 = aliased(AssetPositionsInfo)
+        basic_alias1 = aliased(AssetBasicInfo)
         with session.begin():
             query = session.query(*flow_columns, AssetPositionsInfo.cabinet_position.label("cabinet_position"),AssetPositionsInfo.u_position.label("u_position"),
+                                  AssetBasicInfo.name.label("asset_name"),basic_alias1.name.label("opposite_asset_name"),
                                   position_alias1.cabinet_position.label("opposite_cabinet_position"), position_alias1.u_position.label("opposite_u_position"))
             # 外连接
             query = query.outerjoin(AssetPositionsInfo, AssetPositionsInfo.asset_id == AssetFlowsInfo.asset_id). \
-                    outerjoin(position_alias1, position_alias1.asset_id == AssetFlowsInfo.opposite_asset_id)
-                        # 数据库查询参数
+                outerjoin(position_alias1, position_alias1.asset_id == AssetFlowsInfo.opposite_asset_id). \
+                outerjoin(AssetBasicInfo, AssetBasicInfo.id == AssetFlowsInfo.asset_id). \
+                outerjoin(basic_alias1, basic_alias1.id == AssetFlowsInfo.opposite_asset_id)
+                    # 数据库查询参数
             if asset_id is not None:
                 query = query.filter(AssetFlowsInfo.asset_id == asset_id)
+            if asset_ids is not None:
+                query = query.filter(AssetFlowsInfo.id.in_(asset_ids.split(',')))
             # 查询所有数据
             assert_flow_list = query.all()
             # 返回
@@ -482,29 +511,33 @@ class AssetSQL:
 
     @classmethod
     def create_asset_flow(cls, asset_flow):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.add(asset_flow)
 
     @classmethod
     def delete_asset_flow(cls, asset_flow_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             # 删除网络设备流信息
             session.query(AssetFlowsInfo).filter(AssetFlowsInfo.id == asset_flow_id).delete()
 
     @classmethod
     def get_asset_flow_by_id(cls, asset_flow_id):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             return session.query(AssetFlowsInfo).filter(AssetFlowsInfo.id == asset_flow_id).first()
 
     @classmethod
     def update_asset_flow(cls, asset_flow_info):
-        Session = sessionmaker(bind=engine, expire_on_commit=False)
-        session = Session()
+        # Session = sessionmaker(bind=engine, expire_on_commit=False)
+        # session = Session()
+        session = get_session()
         with session.begin():
             session.merge(asset_flow_info)
