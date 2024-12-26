@@ -16,7 +16,6 @@ async def get_bigscreen_metrics(name: str):
 async def list_bigscreen_metrics_configs():
     # 返回数据接口
     try:
-        # 查询成功
         result = BigScreensService.list_bigscreen_metrics_configs()
         return result
     except Exception as e:
@@ -24,7 +23,8 @@ async def list_bigscreen_metrics_configs():
         traceback.print_exc()
         return None
 
-@router.get("/bigscreen/query", summary="查询大屏指标数据")
-# 转发给prometheu, 将查询到的数据返回
-async def query_bigscreen_metrics_data():
-    pass
+@router.get("/bigscreen/query", summary="获取大屏指标下钻数据")
+# 转发给prometheus, 将查询到的数据返回
+async def get_bigscreen_metrics_drill(promql: str):
+    metrics = BigScreensService.fetch_metrics_with_promql(promql)
+    return metrics
