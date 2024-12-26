@@ -28,12 +28,28 @@ class AssetPartApiModel(BaseModel):
     description: Optional[str] = Field(None, description="配件的备注描述")
 
 
+# 资产流量信息
+class AssetFlowApiModel(BaseModel):
+    id: Optional[str] = Field(None, description="信息的id")
+    asset_id: Optional[str] = Field(None, description="网络设备的id")
+    port: Optional[str] = Field(None, description="网络设备的端口")
+    label: Optional[str] = Field(None, description="网络设备的标签")
+    opposite_asset_id: Optional[str] = Field(None, description="对端网络设备的id")
+    opposite_port: Optional[str] = Field(None, description="对端网络设备的端口")
+    opposite_label: Optional[str] = Field(None, description="对端网络设备的标签")
+    cable_type:  Optional[str] = Field(None, description="线缆类型")
+    cable_interface_type:  Optional[str] = Field(None, description="线缆接口类型")
+    cable_length:  Optional[int] = Field(None, description="线缆长度")
+    extra: Optional[Dict[str, Any]] = Field(None, description="扩展信息")
+    description: Optional[str] = Field(None, description="备注描述")
+
+
 # 资产生产厂商信息
 class AssetManufacturerApiModel(BaseModel):
     asset_id: Optional[str] = Field(None, description="厂商关联的资产设备编号信息")
     name: Optional[str] = Field(None, description="厂商的名称")
     description: Optional[str] = Field(None, description="厂商的描述信息")
-    extra: Optional[Dict[str, Any]] = Field(None, description="厂商的扩展信息")
+    extra: Optional[List[Dict[str, Any]]] = Field(None, description="厂商的扩展信息")
 
 
 # 资产购买合同信息
@@ -74,9 +90,9 @@ class AssetCreateApiModel(BaseModel):
     # 资产通用信息
     asset_id: Optional[str] = Field(None, description="资产设备的id")
     asset_name: str = Field(..., description="资产设备的名称")
-    asset_type_id: Optional[str] = Field(..., description="资产设备的类型id")
-    asset_category: Optional[str] = Field(..., description="资产设备的大类")
-    asset_type: Optional[str] = Field(..., description="资产设备的类型Key")
+    asset_type_id: str = Field(..., description="资产设备的类型id")
+    asset_category: Optional[str] = Field(None, description="资产设备的大类")
+    asset_type: Optional[str] = Field(None, description="资产设备的类型Key")
     asset_description: Optional[str] = Field(None, description="资产设备描述信息")
     # 资产基础信息
     equipment_number: Optional[str] = Field(None, description="资产设备型号")
@@ -96,9 +112,27 @@ class AssetCreateApiModel(BaseModel):
     asset_belong: Optional[AssetBelongApiModel] = Field(None, description="资产设备的所属用户信息")
     # 租户信息
     asset_customer: Optional[AssetCustomerApiModel] = Field(None, description="资产设备的租户信息")
+    # 流量信息
+    # asset_flow: Optional[List[AssetFlowApiModel]] = Field(None, description="资产设备的流量信息")
 
 
 class AssetUpdateStatusApiModel(BaseModel):
     asset_id: str = Field(None, description="资产设备的id")
     asset_status: str = Field(None, description="资产设备的状态")
     asset_status_description: Optional[str] = Field(None, description="状态的描述信息，错误情况填写工单url之类信息")
+
+
+class AssetTypeApiModel(BaseModel):
+    id:  Optional[str] = Field(None, description="资产类型的id")
+    parent_id:  Optional[str] = Field(None, description="资产类型的父id")
+    asset_type_name:  str = Field(None, description="资产类型的英文名称, 如果父id存在，英文名称以父名称_作为开头")
+    asset_type_name_zh:  Optional[str] = Field(None, description="资产类型的中文名称")
+    queue:  Optional[int] = Field(None, description="资产类型的顺序号码")
+    description:  Optional[str] = Field(None, description="资产类型的描述信息")
+
+# 资产批量下载的信息
+class AssetBatchDownloadApiModel(BaseModel):
+    asset_type: str = Field(None, description="资产类型")
+    asset_ids: str = Field(None, description="资产数据的id的拼装字符串")
+
+

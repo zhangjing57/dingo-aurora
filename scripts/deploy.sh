@@ -27,7 +27,12 @@ if [[ -n "$(docker ps -a -f "name=${module_name}$"  -q )" ]]; then
   docker rm $module_name
 fi
 
-docker_command="docker run -d -p ${node_port}:${node_port}"
+# 判断是否存在 /etc/kolla/dingoops 目录，没有则创建
+if [[ ! -d "/etc/kolla/dingoops" ]]; then
+  mkdir -p /etc/kolla/dingoops
+fi
+
+docker_command="docker run -d -p ${node_port}:${node_port} -v /etc/kolla/dingoops:/etc/dingoops"
 docker_command="${docker_command} -e TZ=Asia/Shanghai"
 docker_command="${docker_command} --name ${module_name} ${harbor_url}/${module_name}:${image_version}"
 
