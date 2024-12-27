@@ -5,7 +5,7 @@ import os
 CONF = cfg.CONF
 
 # 配置目录
-CONF(default_config_files = ['/etc/dingoops/dingoops.conf'])
+CONF(args=[], default_config_files = ['/etc/dingoops/dingoops.conf'])
 
 # 数据库
 database_group = cfg.OptGroup(name='database', title='database')
