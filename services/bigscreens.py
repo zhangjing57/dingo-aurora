@@ -3,60 +3,58 @@ import json
 import urllib
 
 import requests
+from pymemcache.client.base import Client
+from config.settings import settings
 
-from utils.constant import bigscreen_query_items
+from db.models.bigscreen.models import BigscreenMetricsConfig
+from db.models.bigscreen.sql import BigscreenSQL
+from config.settings import settings
 
-# 大屏数据测试接口
-big_scren_test_url = 'http://172.20.53.200:80/api/v1/query?query='
+prometheus_query_url = settings.prometheus_query_url
 
 class BigScreensService:
+    @classmethod
+    def list_bigscreen_metrics_configs(self):
+        return BigscreenSQL.get_bigscreen_metrics_configs()
 
-    # 查询大屏数据
-    def list_bigscreen(self, sub_class_item):
-        # 指标项空
-        if sub_class_item is None or len(sub_class_item) <= 0:
-            print("sub_class_item is empty")
-            return None
-        # 指标项是否约定的指标项
-        sub_class_item_query = None
-        for temp in bigscreen_query_items:
-            # 对应的指标项
-            if temp.get("name") == sub_class_item:
-                sub_class_item_query = temp.get("query")
-                break
-        if sub_class_item_query is None or len(sub_class_item_query) <= 0:
-            print("sub_class_item_query is empty")
+    @classmethod
+    def get_bigscreen_metrics(self, name):
+        memcached_client = Client((settings.memcached_address), timeout=1)
+        try:
+            memcached_metrics = memcached_client.get(f'{settings.memcached_key_prefix}{name}')
+            if memcached_metrics:
+                return memcached_metrics.decode()
+        except Exception as e:
+            print("缓存读取失败，尝试从数据库读取数据")
+
+        bigscreen_metrics_config = BigscreenSQL.get_bigscreen_metrics_config_by_name(name)
+        if bigscreen_metrics_config:
+            query = bigscreen_metrics_config.query
+        else:
             return None
         # 通过get请求读取实时监控数据 指标项的查询语句 + / 需要转义
-        request_url = big_scren_test_url + urllib.parse.quote(sub_class_item_query)
-        print(request_url)
+        request_url = prometheus_query_url + urllib.parse.quote(query)
         response = requests.get(request_url)
-        # 处理只有1组value的数据
-        return self.handle_response(response)
+        return self.__handle_response(response)
 
     # 解析接口返回的数据
-    def handle_response(self, response):
+    @classmethod
+    def __handle_response(self, response):
         try:
-            # response数据
             json_response = response.json()
-            print(json_response)
-            # 请求结果
             if json_response:
-                # 请求成功
                 if json_response['status'] == 'success':
-                    # 请求结果
                     json_data = json_response['data']
-                    # 解析数据
                     json_data_result = json_data['result']
-                    # 数据是1组
-                    return json_data_result
-                    # if json_data_result and len(json_data_result) == 1:
-                    #     for temp in json_data_result:
-                    #         print(temp['value'][1])
-                    #         return temp['value'][1]
-                    # # 数据是多组
-                    # if json_data_result and len(json_data_result) == 1:
-                    #     for temp in json_data_result:
-                    #         print(temp[1])
+                    print(f"json_data_result：{json_data_result}")
+                    if json_data_result == []:
+                        return None
+                    return json_data_result[0]['value'][1]
         except Exception as e:
             raise e
+
+    @classmethod
+    def fetch_metrics_with_promql(self, promql):
+        request_url = prometheus_query_url + urllib.parse.quote(promql)
+        response = requests.get(request_url)
+        return response.json()

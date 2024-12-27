@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from api import api_router
+from jobs import bigscreen_metrics_syncer
 
 PROJECT_NAME = "dingoops"
 
@@ -17,6 +18,10 @@ async def root():
     return {"message": "Welcome to the dingoops of version v1!"}
 
 app.include_router(api_router, prefix="/v1")
+
+@app.on_event("startup")
+async def app_start():
+    bigscreen_metrics_syncer.start()
 
 # 本地启动作测试使用
 if __name__ == '__main__':
