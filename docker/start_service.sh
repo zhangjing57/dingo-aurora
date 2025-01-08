@@ -6,6 +6,7 @@ echo "/usr/local/bin/gunicorn -c /etc/dingoops/gunicorn.py main:app" >/run_comma
 
 mapfile -t CMD < <(tail /run_command | xargs -n 1)
 # kolla_extend_start
+pip install -e .
 if [[ "${!KOLLA_BOOTSTRAP[*]}" ]]; then
 
     alembic -c ./db/alembic/alembic.ini upgrade head
