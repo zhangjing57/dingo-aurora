@@ -1,9 +1,10 @@
-from dingoops.api.model import models as api_models
+from dingoops.api.model.cluster import ClusterObject
 from dingoops.api.model import router
-from fastapi import File, UploadFile
 from starlette import status
-from starlette.requests import Request
-from starlette.responses import Response
+from api.model.system import OperateLogApiModel
+from dingoops.services.cluster import ClusterService
+from services.system import SystemService
+from services.custom_exception import Fail
 
 
 @router.post(  # type: ignore
@@ -11,13 +12,13 @@ from starlette.responses import Response
 )
     
 @router.post("/cluster", summary="创建k8s集群", description="创建k8s集群")
-async def create_cluster(asset_flow:AssetFlowApiModel):
-    # 创建资产类型
+async def create_cluster(cluster_object:ClusterObject):
     try:
-        # 创建成功
-        result = assert_service.create_asset_flow(asset_flow)
+        # 集群信息存入数据库
+        result = ClusterService.create_cluster(cluster_object)
+       
         # 操作日志
-        system_service.create_system_log(OperateLogApiModel(operate_type="create", resource_type="flow", resource_id=result, resource_name=asset_flow.label, operate_flag=True))
+        SystemService.create_system_log(OperateLogApiModel(operate_type="create", resource_type="flow", resource_id=result, resource_name=cluster_object.name, operate_flag=True))
         return result
     
     except Fail as e:

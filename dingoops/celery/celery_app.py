@@ -1,8 +1,9 @@
 import os
+from typing import List
 from venv import logger
 from celery import Celery
 import dingoops.celery.config as app_config  # to not shadow global app var with FastAPI app
-
+from sqlalchemy.exc import OperationalError
 
 mq_uri = app_config.get_config().mq_uri
 logger.info(f"amqp_uri: {mq_uri}")
