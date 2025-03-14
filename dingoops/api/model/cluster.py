@@ -1,21 +1,19 @@
 
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
-from dingoops.api.model.base import DingoopsObject
+from api.model.base import DingoopsObject
 
 
 class NetworkConfigObject(BaseModel):
-    network_id: Optional[str] = Field(None, description="项目id")
-    subnet_id: Optional[str] = Field(None, description="用户id")
+    network_id: Optional[str] = Field(None, description="网络id")
+    subnet_id: Optional[str] = Field(None, description="子网id")
     cni: Optional[str] = Field(None, description="集群标签")
     pod_cidr: Optional[str] = Field(None, description="集群状态原因")
     network_id: Optional[str] = Field(None, description="网络id")
     subnet_id: Optional[str] = Field(None, description="子网id")
     vip: Optional[str] = Field(None, description="管理网访问地址")
     service_cidr: Optional[str] = Field(None, description="服务网段")
-    version: Optional[str] = Field(None, description="k8s版本")
-    cni: Optional[str] = Field(None, description="cni插件")
     
 class NodeConfigObject(BaseModel):
     count: Optional[int] = Field(None, description="项目id")
@@ -27,13 +25,14 @@ class NodeConfigObject(BaseModel):
 
 class ClusterObject(DingoopsObject):
     project_id: Optional[str] = Field(None, description="项目id")
+    
     user_id: Optional[str] = Field(None, description="用户id")
     labels: Optional[str] = Field(None, description="集群标签")
     status: Optional[str] = Field(None, description="集群状态")
     status_msg: Optional[str] = Field(None, description="集群状态原因")
     region_name: Optional[str] = Field(None, description="region名称")
     network_config: Optional[NetworkConfigObject] = Field(None, description="网络配置")
-    node_config: Optional[NodeConfigObject[]] = Field(None, description="节点配置")
+    node_config: Optional[List[NodeConfigObject]] = Field(None, description="节点配置")
     runtime: Optional[str] = Field(None, description="运行时类型")
     type: Optional[str] = Field(None, description="集群类型")
     version: Optional[str] = Field(None, description="k8s版本")

@@ -13,7 +13,7 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.styles import Border, Side
 from typing_extensions import assert_type
 
-from dingoops.celery.celery_app import celery_app
+from celery_api.celery_app import celery_app
 from db.models.asset.sql import AssetSQL
 from math import ceil
 from oslo_log import log
@@ -134,11 +134,11 @@ class ClusterService:
     def create_cluster(self, cluster):
         # 数据校验 todo
         try:
-            
             cluster_info_db = self.convert_clusterinfo_todb(cluster)
-
-            # 保存对象
+            # 保存对象到数据库
             cluster_id = AssetSQL.create_cluster(cluster_info_db)
+            # 保存节点信息到数据库
+            # cluster_id = AssetSQL.create_cluster(cluster_info_db)
             # 调用celery_app项目下的work.py中的create_cluster方法
             result = celery_app.send_task("work.create_cluster", args=[cluster])
             logging.info(result.get())

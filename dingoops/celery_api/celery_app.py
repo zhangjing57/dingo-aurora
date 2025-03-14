@@ -1,13 +1,17 @@
 import os
 from typing import List
 from venv import logger
+
 from celery import Celery
-import dingoops.celery.config as app_config  # to not shadow global app var with FastAPI app
 from sqlalchemy.exc import OperationalError
+from oslo_config import cfg
 
-mq_uri = app_config.get_config().mq_uri
-logger.info(f"amqp_uri: {mq_uri}")
+from celery_api import CONF
 
+# redis的配置信息
+REDIS_HOST = CONF.redis.redis_ip
+REDIS_PORT = CONF.redis.redis_port
+REDIS_PASSWORD = CONF.redis.redis_password
 
 class Config:
     """
@@ -43,21 +47,17 @@ def get_task_packages(path: str) -> List[str]:
 try:
     celery_app = Celery(
         "celery",
-        backend=app_config.get_config().celery_backend_uri,
-        broker=app_config.get_config().celery_broker_uri,
+        backend=f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0",
+        broker=f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0",
         include=get_task_packages(os.path.join("dingoops", "tasks")),
     )
     celery_app.config_from_object(Config)
     celery_app.connection().ensure_connection(max_retries=3, timeout=15)
-    print(
-        f">>> celery_app: {app_config.get_config().celery_backend_uri}, {app_config.get_config().celery_broker_uri}"
-    )
 except OperationalError as e:
     raise RuntimeError(
-        f"Connection to {app_config.get_config().celery_broker_uri} broker refused."
+        f"Connection to @{REDIS_HOST}:{REDIS_PORT} broker refused."
     ) from e
 
-logger.info(f"Connection to {mq_uri} established.")
 
 celery_app.conf.task_default_queue = "main-queue"
 

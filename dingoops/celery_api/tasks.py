@@ -3,8 +3,7 @@ import time
 from typing import Optional
 
 import celery.result
-from dingoops.celery.celery_app import celery_app
-from dingoops.celery.config import get_config
+from celery_api.celery_app import celery_app
 
 
 class TasksDatabase:
@@ -16,7 +15,6 @@ class TasksDatabase:
 
     def __init__(self):
         self.tasks_hash = "celery_task_ids"
-        self.redis = get_config().redis
 
     def create(self, task_id: str):
         self.redis.hincrby(self.tasks_hash, task_id)
