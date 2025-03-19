@@ -7,34 +7,42 @@ from api.model.base import DingoopsObject
 
 class NetworkConfigObject(BaseModel):
     network_id: Optional[str] = Field(None, description="网络id")
-    subnet_id: Optional[str] = Field(None, description="子网id")
+    admin_subnet_id: Optional[str] = Field(None, description="管理网id")
     cni: Optional[str] = Field(None, description="集群标签")
     pod_cidr: Optional[str] = Field(None, description="集群状态原因")
     network_id: Optional[str] = Field(None, description="网络id")
-    subnet_id: Optional[str] = Field(None, description="子网id")
+    bus_subnet_id: Optional[str] = Field(None, description="业务子网id")
+    admin_network_id: Optional[str] = Field(None, description="管理网络id")
+    bus_network_id: Optional[str] = Field(None, description="业务网络id")
     vip: Optional[str] = Field(None, description="管理网访问地址")
+    floating_ip: Optional[bool] = Field(None, description="是否启用浮动ip")
     service_cidr: Optional[str] = Field(None, description="服务网段")
+    router_id: Optional[str] = Field(None, description="虚拟路由id")
     
 class NodeConfigObject(BaseModel):
     count: Optional[int] = Field(None, description="项目id")
     image: Optional[str] = Field(None, description="用户id")
     flavor_id: Optional[str] = Field(None, description="集群状态")
-    role: Optional[str] = Field(None, description="集群状态原因")
+    role: Optional[str] = Field(None, description="节点角色")
     type: Optional[str] = Field(None, description="节点类型vm/metal")
     security_group: Optional[str] = Field(None, description="安全组名称")
-
+    
+class NodeGroup(BaseModel):
+    az: Optional[int] = Field(None, description="可用域")
+    flavor_id: Optional[str] = Field(None, description="规格")
+    floating_ip: Optional[str] = Field(None, description="浮动ip")
+    etcd: Optional[str] = Field(None, description="是否是etcd节点")
+    
 class ClusterObject(DingoopsObject):
     project_id: Optional[str] = Field(None, description="项目id")
-    
     user_id: Optional[str] = Field(None, description="用户id")
     labels: Optional[str] = Field(None, description="集群标签")
-    status: Optional[str] = Field(None, description="集群状态")
-    status_msg: Optional[str] = Field(None, description="集群状态原因")
     region_name: Optional[str] = Field(None, description="region名称")
     network_config: Optional[NetworkConfigObject] = Field(None, description="网络配置")
     node_config: Optional[List[NodeConfigObject]] = Field(None, description="节点配置")
     runtime: Optional[str] = Field(None, description="运行时类型")
     type: Optional[str] = Field(None, description="集群类型")
+    
     version: Optional[str] = Field(None, description="k8s版本")
     kube_config: Optional[str] = Field(None, description="cni插件")
 
@@ -65,3 +73,13 @@ class NodeStatusObject(BaseModel):
     status_msg: Optional[str] = Field(None, description="集群状态信息")
     update_time: Optional[str] = Field(None, description="更新时间")                
    
+class ClusterTFVarsObject(BaseModel):
+    cluster_name: Optional[str] = Field(None, description="项目id")
+    image: Optional[str] = Field(None, description="用户id")
+    k8s_masters: Optional[NodeGroup] = Field(None, description="集群标签")
+    k8s_nodes: Optional[NodeGroup] = Field(None, description="集群状态")
+    admin_subnet_id: Optional[str] = Field(None, description="集群状态原因")
+    bus_subnet_id: Optional[str] = Field(None, description="region名称")
+    floatingip_pool: Optional[str] = Field(None, description="节点配置")
+    subnet_cidr: Optional[str] = Field(None, description="运行时类型")
+    use_existing_network: Optional[str] = Field(None, description="集群类型")

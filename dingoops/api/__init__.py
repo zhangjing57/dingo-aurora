@@ -3,7 +3,7 @@ import os
 
 from fastapi import APIRouter
 
-from api import assets, bigscreens, system, monitor,cluster
+from dingoops.api import assets, bigscreens, system, monitor,cluster
 
 # 启动时创建excel的临时存放目录
 excel_temp_dir = "/home/dingoops/temp_excel/"

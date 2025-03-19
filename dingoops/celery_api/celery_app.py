@@ -6,7 +6,7 @@ from celery import Celery
 from sqlalchemy.exc import OperationalError
 from oslo_config import cfg
 
-from celery_api import CONF
+from dingoops.celery_api import CONF
 
 # redis的配置信息
 REDIS_HOST = CONF.redis.redis_ip
