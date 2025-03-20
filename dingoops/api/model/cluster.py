@@ -1,5 +1,5 @@
 
-from typing import Optional, List
+from typing import Dict, Optional, List
 
 from pydantic import BaseModel, Field
 from api.model.base import DingoopsObject
@@ -22,13 +22,13 @@ class NetworkConfigObject(BaseModel):
 class NodeConfigObject(BaseModel):
     count: Optional[int] = Field(None, description="项目id")
     image: Optional[str] = Field(None, description="用户id")
-    flavor_id: Optional[str] = Field(None, description="集群状态")
+    flavor_id: Optional[str] = Field(None, description="节点规格")
     role: Optional[str] = Field(None, description="节点角色")
     type: Optional[str] = Field(None, description="节点类型vm/metal")
     security_group: Optional[str] = Field(None, description="安全组名称")
     
 class NodeGroup(BaseModel):
-    az: Optional[int] = Field(None, description="可用域")
+    az: Optional[str] = Field(None, description="可用域")
     flavor_id: Optional[str] = Field(None, description="规格")
     floating_ip: Optional[str] = Field(None, description="浮动ip")
     etcd: Optional[str] = Field(None, description="是否是etcd节点")
@@ -76,8 +76,8 @@ class NodeStatusObject(BaseModel):
 class ClusterTFVarsObject(BaseModel):
     cluster_name: Optional[str] = Field(None, description="项目id")
     image: Optional[str] = Field(None, description="用户id")
-    k8s_masters: Optional[NodeGroup] = Field(None, description="集群标签")
-    k8s_nodes: Optional[NodeGroup] = Field(None, description="集群状态")
+    k8s_masters: Optional[Dict[str, NodeGroup]] = Field(None, description="集群标签")
+    k8s_nodes: Optional[Dict[str, NodeGroup]] = Field(None, description="集群状态")
     admin_subnet_id: Optional[str] = Field(None, description="集群状态原因")
     bus_subnet_id: Optional[str] = Field(None, description="region名称")
     floatingip_pool: Optional[str] = Field(None, description="节点配置")

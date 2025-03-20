@@ -7,7 +7,7 @@ from fastapi import Path
 from pathlib import Path as PathLib
 from requests import Session
 from celery_api.celery_app import celery_app
-from api.model.cluster import ClusterObject, NodeConfigObject,ClusterTFVarsObject
+from api.model.cluster import ClusterObject, NodeGroup,ClusterTFVarsObject
 from services import CONF
 
 
@@ -16,6 +16,33 @@ TERRAFORM_DIR = os.path.join(BASE_DIR, "dingoops", "templates", "terraform")
 ANSIBLE_DIR = os.path.join(BASE_DIR, "templates", "ansible-deploy")
 WORK_DIR = CONF.DEFAULT.cluster_work_dir
 
+def generate_k8s_nodes(cluster, k8s_masters, k8s_nodes):
+    for idx, node in enumerate(cluster.node_config):
+        for y in range(node.count):
+            if node.role == 'master':
+                    #index=master+node
+                if y == 0:
+                    float_ip=True
+                else:
+                    float_ip=False
+                if y<3:
+                    etcd = True
+                else:
+                    etcd =False
+                k8s_masters[f"master-{int(y)+1}"] = NodeGroup(
+                    az=get_az_value(node.type),
+                    flavor=node.flavor_id,
+                    floating_ip=float_ip, 
+                    etcd=etcd
+                )
+            if node.role == 'worker':
+                    #index=master+node
+                k8s_nodes[f"master-{int(y)+1}"] = NodeGroup(
+                    az=get_az_value(node.type),
+                    flavor=node.flavor_id,
+                    floating_ip=False, 
+                    etcd=True
+                )
 
 def get_az_value(node_type):
     """根据节点类型返回az值"""
@@ -71,35 +98,7 @@ def create_infrastructure(cluster:ClusterObject):
         print(f"Terraform error: {e}")
         return False
 
-def generate_k8s_nodes(cluster, k8s_masters, k8s_nodes):
-    for idx, node in enumerate(cluster.node_config):
-        for y in range(node.count):
-            if node.role == 'master':
-                    #index=master+node
-                if y == 0:
-                    float_ip=True
-                else:
-                    float_ip=False
-                if y<3:
-                    etcd = True
-                else:
-                    etcd =False
-                k8s_masters[ f"master-{y+1}"] = {
-                        #如果node.type是vm则az的值为"nova"，如果是baremental则az的值为空
-                        "az": get_az_value(node.type),
-                        "flavor": node.flavor_id,
-                        "floating_ip": float_ip,
-                        "etcd": etcd
-                    }
-            if node.role == 'worker':
-                    #index=master+node
-                k8s_nodes[ f"node-{y+1}"] = {
-                        #如果node.type是vm则az的值为"nova"，如果是baremental则az的值为空
-                        "az": get_az_value(node.type),
-                        "flavor": node.flavor_id,
-                        "floating_ip": False,
-                        "etcd": False
-                    }
+
 def deploy_kubernetes(cluster):
     """使用Ansible部署K8s集群"""
     try:
