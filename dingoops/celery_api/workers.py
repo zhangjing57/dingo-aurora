@@ -31,15 +31,15 @@ def generate_k8s_nodes(cluster, k8s_masters, k8s_nodes):
                     etcd =False
                 k8s_masters[f"master-{int(y)+1}"] = NodeGroup(
                     az=get_az_value(node.type),
-                    flavor=node.flavor_id,
+                    flavor_id=node.flavor_id,
                     floating_ip=float_ip, 
                     etcd=etcd
                 )
             if node.role == 'worker':
                     #index=master+node
-                k8s_nodes[f"master-{int(y)+1}"] = NodeGroup(
+                k8s_nodes[f"node-{int(y)+1}"] = NodeGroup(
                     az=get_az_value(node.type),
-                    flavor=node.flavor_id,
+                    flavor_id=node.flavor_id,
                     floating_ip=False, 
                     etcd=True
                 )
@@ -72,25 +72,23 @@ def create_infrastructure(cluster:ClusterObject):
             k8s_nodes=k8s_nodes,
             admin_subnet_id=cluster.network_config.admin_subnet_id,
             bus_subnet_id=cluster.network_config.admin_subnet_id,
+            admin_network_id=cluster.network_config.admin_subnet_id,
+            bus_network_id=cluster.network_config.bus_network_id,
             floatingip_pool="physnet2",
             subnet_cidr=cluster.network_config.pod_cidr,
+            external_net=
             use_existing_network=True)
         tfvars_str = json.dumps(tfvars, default=lambda o: o.__dict__, indent=2)
         #result = subprocess.run(["json2hcl", tfvars_str], capture_output=True, text=True)
         with open("output.tfvars.json", "w") as f:
             f.write(tfvars_str)
-        filename = os.path.join(cluster_dir,"output.tfvars.json")
-        with open(filename, 'r') as f:
-            res = subprocess.run(["json2hcl"], capture_output=True, text=True, input=f.read())
-        #res = subprocess.run(["json2hcl","<",filename], capture_output=True, text=True, shell=True, encoding='utf-8')     
-        with open("output.tfvars", "w") as f:
-            f.write(res.stdout)
+       
         # 执行terraform apply
         subprocess.run([
             "terraform",
             "apply",
             "-auto-approve",
-            "-var-file=output.tfvars"
+            "-var-file=output.tfvars.json"
         ], check=True,capture_output=True, text=True) 
         return True
         

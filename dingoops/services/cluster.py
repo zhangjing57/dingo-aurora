@@ -17,6 +17,7 @@ from celery_api.celery_app import celery_app
 from db.models.asset.sql import AssetSQL
 from math import ceil
 from oslo_log import log
+from skyline_apiserver.client.openstack import cinder, glance, keystone, neutron, nova
 
 from services.custom_exception import Fail
 from services.system import SystemService
@@ -140,6 +141,8 @@ class ClusterService:
             # 保存节点信息到数据库
             # cluster_id = AssetSQL.create_cluster(cluster_info_db)
             # 调用celery_app项目下的work.py中的create_cluster方法
+            #查询openstack相关接口，返回需要的信息
+            external_net = 
             result = celery_app.send_task("work.create_cluster", args=[cluster])
             logging.info(result.get())
         except Fail as e:
