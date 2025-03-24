@@ -9,14 +9,14 @@ from fastapi import APIRouter, UploadFile, File, Query, Path, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from mako.testing.helpers import result_lines
 
-from api.model.assets import AssetCreateApiModel, AssetManufacturerApiModel, AssetUpdateStatusApiModel, \
+from dingoops.api.model.assets import AssetCreateApiModel, AssetManufacturerApiModel, AssetUpdateStatusApiModel, \
     AssetPartApiModel, AssetTypeApiModel, AssetFlowApiModel, AssetBatchDownloadApiModel, AssetBatchUpdateApiModel, \
     AssetExtendColumnApiModel
 from dingoops.api.model.system import OperateLogApiModel
-from api.response import ResponseModel, success_response
-from services.assets import AssetsService
-from services.custom_exception import Fail
-from services.system import SystemService
+from dingoops.api.response import ResponseModel, success_response
+from dingoops.services.assets import AssetsService
+from dingoops.services.custom_exception import Fail
+from dingoops.services.system import SystemService
 from utils.constant import EXCEL_TEMP_DIR, ASSET_TEMPLATE_ASSET_SHEET, ASSET_TEMPLATE_PART_SHEET, \
     ASSET_TEMPLATE_ASSET_TYPE, ASSET_TEMPLATE_NETWORK_SHEET
 from utils.datetime import format_unix_timestamp, format_d8q_timestamp

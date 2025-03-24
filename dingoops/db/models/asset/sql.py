@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy import create_engine, func
 from typing_extensions import assert_type
 
-from db.engines.mysql import get_session
-from db.models.asset.models import Asset, AssetBasicInfo, AssetPartsInfo, AssetManufacturesInfo, AssetPositionsInfo, \
+from dingoops.db.engines.mysql import get_session
+from dingoops.db.models.asset.models import Asset, AssetBasicInfo, AssetPartsInfo, AssetManufacturesInfo, AssetPositionsInfo, \
     AssetContractsInfo, AssetBelongsInfo, AssetCustomersInfo, AssetType, AssetFlowsInfo, AssetManufactureRelationInfo, \
     AssetExtendsColumnsInfo
 

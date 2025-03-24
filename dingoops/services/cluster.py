@@ -14,10 +14,12 @@ from openpyxl.styles import Border, Side
 from typing_extensions import assert_type
 
 from celery_api.celery_app import celery_app
-from db.models.asset.sql import AssetSQL
+from db.models.cluster.sql import ClusterSQL
 from math import ceil
 from oslo_log import log
-from skyline_apiserver.client.openstack import cinder, glance, keystone, neutron, nova
+from dingoops.api.model.cluster import ClusterTFVarsObject, NodeGroup, ClusterObject
+from dingoops.db.models.cluster.models import Cluster as ClusterDB
+from utils import neutron
 
 from services.custom_exception import Fail
 from services.system import SystemService
@@ -38,6 +40,36 @@ system_service = SystemService()
 
 class ClusterService:
 
+    def get_az_value(self, node_type):
+        """根据节点类型返回az值"""
+        return "nova" if node_type == "vm" else ""
+    def generate_k8s_nodes(self, cluster, k8s_masters, k8s_nodes):
+        for idx, node in enumerate(cluster.node_config):
+            for y in range(node.count):
+                if node.role == 'master':
+                        #index=master+node
+                    if y == 0:
+                        float_ip=True
+                    else:
+                        float_ip=False
+                    if y<3:
+                        etcd = True
+                    else:
+                        etcd =False
+                    k8s_masters[f"master-{int(y)+1}"] = NodeGroup(
+                        az=self.get_az_value(node.type),
+                        flavor_id=node.flavor_id,
+                        floating_ip=float_ip, 
+                        etcd=etcd
+                    )
+                if node.role == 'worker':
+                        #index=master+node
+                    k8s_nodes[f"node-{int(y)+1}"] = NodeGroup(
+                        az=self.get_az_value(node.type),
+                        flavor_id=node.flavor_id,
+                        floating_ip=False, 
+                        etcd=True
+                    )
     # 查询资产列表
     def list_clusters(self, query_params, page, page_size, sort_keys, sort_dirs):
         # 业务逻辑
@@ -132,18 +164,40 @@ class ClusterService:
             traceback.print_exc()
             return None
 
-    def create_cluster(self, cluster):
+    def create_cluster(self, cluster: ClusterObject):
         # 数据校验 todo
         try:
             cluster_info_db = self.convert_clusterinfo_todb(cluster)
             # 保存对象到数据库
-            cluster_id = AssetSQL.create_cluster(cluster_info_db)
+            cluster_id = ClusterSQL.create_cluster(cluster_info_db)
             # 保存节点信息到数据库
             # cluster_id = AssetSQL.create_cluster(cluster_info_db)
             # 调用celery_app项目下的work.py中的create_cluster方法
             #查询openstack相关接口，返回需要的信息
-            external_net = 
-            result = celery_app.send_task("work.create_cluster", args=[cluster])
+            neutron_api = neutron.API()  # 创建API类的实例
+            external_net = neutron_api.list_external_networks()
+            #组装cluster信息为ClusterTFVarsObject格式
+            k8s_masters = {}
+            k8s_nodes = {}
+            self.generate_k8s_nodes(cluster, k8s_masters, k8s_nodes)
+                
+            # 创建terraform变量
+            tfvars = ClusterTFVarsObject(
+                id = cluster_id,
+                cluster_name=cluster.name,
+                image=cluster.node_config[0].image,
+                k8s_masters=k8s_masters,
+                k8s_nodes=k8s_nodes,
+                admin_subnet_id=cluster.network_config.admin_subnet_id,
+                bus_subnet_id=cluster.network_config.admin_subnet_id,
+                admin_network_id=cluster.network_config.admin_subnet_id,
+                bus_network_id=cluster.network_config.bus_network_id,
+                floatingip_pool="physnet2",
+                subnet_cidr=cluster.network_config.pod_cidr,
+                external_net=external_net[0]['id'],
+                use_existing_network=True)
+                #调用celery_app项目下的work.py中的create_cluster方法
+            result = celery_app.send_task("dingoops.celery_api.workers.create_cluster", args=[tfvars.dict()])
             logging.info(result.get())
         except Fail as e:
             raise e
@@ -154,5 +208,28 @@ class ClusterService:
         # 成功返回资产id
         return cluster_id
     
-    def convert_clusterinfo_todb(cluster):
-        pass
+    def convert_clusterinfo_todb(self, cluster:ClusterObject):
+        cluster_info_db = ClusterDB()
+        cluster_info_db.id = str(uuid.uuid4())
+        cluster_info_db.name = cluster.name
+        cluster_info_db.project_id = cluster.project_id
+        cluster_info_db.user_id = cluster.user_id
+        cluster_info_db.labels = json.dumps(cluster.labels)
+        cluster_info_db.status = "creating"
+        cluster_info_db.region_name = cluster.region_name
+        cluster_info_db.admin_network_id = cluster.network_config.network_id
+        cluster_info_db.admin_subnet_id = cluster.network_config.admin_subnet_id
+        cluster_info_db.bus_network_id = cluster.network_config.bus_network_id
+        cluster_info_db.bus_subnet_id = cluster.network_config.bus_subnet_id
+        cluster_info_db.runtime = cluster.runtime
+        cluster_info_db.type = "k8s"
+        cluster_info_db.service_cidr = cluster.network_config.service_cidr
+        cluster_info_db.bus_address = ""
+        cluster_info_db.api_address = ""
+        cluster_info_db.cni = cluster.network_config.cni
+        cluster_info_db.kube_config = ""
+        cluster_info_db.create_time = datetime.now()
+        cluster_info_db.update_time = datetime.now()
+        cluster_info_db.description = cluster.description
+        cluster_info_db.extra = cluster.extra
+        return cluster_info_db

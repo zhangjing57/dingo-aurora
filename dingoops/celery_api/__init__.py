@@ -1,5 +1,5 @@
 from oslo_config import cfg
-
+from dingoops.utils.common import register_ksa_opts
 # 读取config的信息
 CONF = cfg.CONF
 
@@ -15,7 +15,8 @@ default_opts = [
     cfg.StrOpt('transport_url', default=None, help='the openstack rabbit mq url'),
     cfg.StrOpt('center_transport_url', default=None, help='the region one openstack rabbit mq url'),
     cfg.BoolOpt('center_region_flag', default=False, help='the region is center region'),
-    cfg.StrOpt('region_name', default=None, help='the openstack region name')
+    cfg.StrOpt('region_name', default=None, help='the openstack region name'),
+    cfg.StrOpt('cluster_work_dir', default='/var/lib/dingoops', help='the openstack region name')
 ]
 
 CONF.register_group(default_group)
@@ -28,6 +29,33 @@ redis_opts = [
     cfg.IntOpt('redis_port', default=None, help='the redis port'),
     cfg.StrOpt('redis_password', default=None, help='the redis password'),
 ]
+
+# 注册默认配置
+CONF.register_group(default_group)
+CONF.register_opts(default_opts, default_group)
+# 注册redis配置
+CONF.register_group(redis_group)
+CONF.register_opts(redis_opts, redis_group)
+
+# redis数据
+neutron_group = cfg.OptGroup(name='neutron', title='neutron conf data')
+# neutron_opts = [
+#     cfg.StrOpt('metadata_proxy_shared_secret', default=None, help='the redis ip'),
+#     cfg.IntOpt('service_metadata_proxy', default=None, help='the redis port'),
+#     cfg.StrOpt('auth_url', default=None, help='the redis password'),
+#     cfg.StrOpt('auth_type', default=None, help='the redis password'),
+#     cfg.StrOpt('project_domain_name', default=None, help='the redis password'),
+#     cfg.StrOpt('project_name', default=None, help='the redis password'),
+#     cfg.StrOpt('username', default=None, help='the redis password'),
+#     cfg.StrOpt('password', default=None, help='the redis password'),
+#     cfg.StrOpt('region_name', default=None, help='the redis password'),
+#     cfg.StrOpt('valid_interfaces', default=None, help='the redis password'),
+#     cfg.StrOpt('cafile', default=None, help='the redis password')
+# ]
+# 注册redis配置
+CONF.register_group(neutron_group)
+register_ksa_opts(CONF, neutron_group, "network")
+
 
 # 注册默认配置
 CONF.register_group(default_group)

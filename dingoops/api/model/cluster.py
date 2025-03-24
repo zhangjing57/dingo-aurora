@@ -7,10 +7,10 @@ from api.model.base import DingoopsObject
 
 class NetworkConfigObject(BaseModel):
     network_id: Optional[str] = Field(None, description="网络id")
-    admin_subnet_id: Optional[str] = Field(None, description="管理网id")
     cni: Optional[str] = Field(None, description="集群标签")
     pod_cidr: Optional[str] = Field(None, description="集群状态原因")
     network_id: Optional[str] = Field(None, description="网络id")
+    admin_subnet_id: Optional[str] = Field(None, description="管理网id")
     bus_subnet_id: Optional[str] = Field(None, description="业务子网id")
     admin_network_id: Optional[str] = Field(None, description="管理网络id")
     bus_network_id: Optional[str] = Field(None, description="业务网络id")
@@ -74,7 +74,8 @@ class NodeStatusObject(BaseModel):
     update_time: Optional[str] = Field(None, description="更新时间")                
    
 class ClusterTFVarsObject(BaseModel):
-    cluster_name: Optional[str] = Field(None, description="项目id")
+    id: Optional[str] = Field(None, description="集群id")
+    cluster_name: Optional[str] = Field(None, description="集群id")
     image: Optional[str] = Field(None, description="用户id")
     k8s_masters: Optional[Dict[str, NodeGroup]] = Field(None, description="集群标签")
     k8s_nodes: Optional[Dict[str, NodeGroup]] = Field(None, description="集群状态")

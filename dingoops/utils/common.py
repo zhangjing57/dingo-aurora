@@ -73,5 +73,5 @@ def register_ksa_opts(conf, group, default_service_type, include_auth=True,
     conf.register_opts(get_ksa_adapter_opts(
         default_service_type, deprecated_opts=deprecated_opts), group=group)
     # Have to register dummies for the version-related opts we removed
-    for name in _ADAPTER_VERSION_OPTS:
-        conf.register_opt(_dummy_opt(name), group=group)
+    # for name in _ADAPTER_VERSION_OPTS:
+    #     conf.register_opt(_dummy_opt(name), group=group)

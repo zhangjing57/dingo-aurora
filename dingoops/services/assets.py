@@ -12,17 +12,17 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.styles import Border, Side
 from typing_extensions import assert_type
 
-from api.model.assets import AssetCreateApiModel, AssetFlowApiModel
-from api.model.system import OperateLogApiModel
-from db.models.asset.models import AssetBasicInfo, AssetManufacturesInfo, AssetPartsInfo, AssetPositionsInfo, \
+from dingoops.api.model.assets import AssetCreateApiModel, AssetFlowApiModel
+from dingoops.api.model.system import OperateLogApiModel
+from dingoops.db.models.asset.models import AssetBasicInfo, AssetManufacturesInfo, AssetPartsInfo, AssetPositionsInfo, \
     AssetContractsInfo, AssetCustomersInfo, AssetBelongsInfo, AssetType, AssetFlowsInfo, AssetManufactureRelationInfo, \
     AssetExtendsColumnsInfo
-from db.models.asset.sql import AssetSQL
+from dingoops.db.models.asset.sql import AssetSQL
 from math import ceil
 from oslo_log import log
 
-from services.custom_exception import Fail
-from services.system import SystemService
+from dingoops.services.custom_exception import Fail
+from dingoops.services.system import SystemService
 from utils.common import format_excel_str
 from utils.constant import ASSET_SERVER_TEMPLATE_FILE_DIR, asset_equipment_columns, asset_basic_info_columns, \
     asset_manufacture_info_columns, asset_position_info_columns, asset_contract_info_columns, asset_belong_info_columns, \

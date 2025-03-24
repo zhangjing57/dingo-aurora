@@ -2,13 +2,16 @@ from asyncio import sleep
 import json
 import os
 import subprocess
+from typing import Dict, Optional
+from celery import Celery
 from databases import Database
+from pydantic import BaseModel, Field
 from fastapi import Path
 from pathlib import Path as PathLib
 from requests import Session
-from celery_api.celery_app import celery_app
-from api.model.cluster import ClusterObject, NodeGroup,ClusterTFVarsObject
-from services import CONF
+from dingoops.celery_api.celery_app import celery_app
+from dingoops.celery_api import CONF
+from dingoops.db.engines.mysql import get_engine 
 
 
 BASE_DIR = os.getcwd()
@@ -16,39 +19,28 @@ TERRAFORM_DIR = os.path.join(BASE_DIR, "dingoops", "templates", "terraform")
 ANSIBLE_DIR = os.path.join(BASE_DIR, "templates", "ansible-deploy")
 WORK_DIR = CONF.DEFAULT.cluster_work_dir
 
-def generate_k8s_nodes(cluster, k8s_masters, k8s_nodes):
-    for idx, node in enumerate(cluster.node_config):
-        for y in range(node.count):
-            if node.role == 'master':
-                    #index=master+node
-                if y == 0:
-                    float_ip=True
-                else:
-                    float_ip=False
-                if y<3:
-                    etcd = True
-                else:
-                    etcd =False
-                k8s_masters[f"master-{int(y)+1}"] = NodeGroup(
-                    az=get_az_value(node.type),
-                    flavor_id=node.flavor_id,
-                    floating_ip=float_ip, 
-                    etcd=etcd
-                )
-            if node.role == 'worker':
-                    #index=master+node
-                k8s_nodes[f"node-{int(y)+1}"] = NodeGroup(
-                    az=get_az_value(node.type),
-                    flavor_id=node.flavor_id,
-                    floating_ip=False, 
-                    etcd=True
-                )
+class NodeGroup(BaseModel):
+    az: Optional[str] = Field(None, description="可用域")
+    flavor_id: Optional[str] = Field(None, description="规格")
+    floating_ip: Optional[str] = Field(None, description="浮动ip")
+    etcd: Optional[str] = Field(None, description="是否是etcd节点")
 
-def get_az_value(node_type):
-    """根据节点类型返回az值"""
-    return "nova" if node_type == "vm" else ""
+class ClusterTFVarsObject(BaseModel):
+    id: Optional[str] = Field(None, description="项目id")
+    cluster_name: Optional[str] = Field(None, description="集群名称")   
+    image: Optional[str] = Field(None, description="用户id")
+    k8s_masters: Optional[Dict[str, NodeGroup]] = Field(None, description="集群标签")
+    k8s_nodes: Optional[Dict[str, NodeGroup]] = Field(None, description="集群状态")
+    admin_subnet_id: Optional[str] = Field(None, description="管理子网id")
+    bus_network_id: Optional[str] = Field(None, description="业务网络id")
+    admin_network_id: Optional[str] = Field(None, description="管理网id")
+    bus_subnet_id: Optional[str] = Field(None, description="业务子网id")
+    floatingip_pool: Optional[str] = Field(None, description="节点配置")
+    subnet_cidr: Optional[str] = Field(None, description="运行时类型")
+    use_existing_network: Optional[str] = Field(None, description="是否使用已有网络")
+    external_net: Optional[str] = Field(None, description="外部网络id")
 
-def create_infrastructure(cluster:ClusterObject):
+def create_infrastructure(cluster:ClusterTFVarsObject):
     """使用Terraform创建基础设施"""
     try:
         
@@ -60,25 +52,9 @@ def create_infrastructure(cluster:ClusterObject):
         # 初始化terraform
         subprocess.run(["terraform", "init"], capture_output=True)
         # 遍历cluster.node_config，组装成
-        k8s_masters = {}
-        k8s_nodes = {}
-        generate_k8s_nodes(cluster, k8s_masters, k8s_nodes)
             
-        # 创建terraform变量文件
-        tfvars = ClusterTFVarsObject(
-            cluster_name=cluster.name,
-            image=cluster.node_config[0].image,
-            k8s_masters=k8s_masters,
-            k8s_nodes=k8s_nodes,
-            admin_subnet_id=cluster.network_config.admin_subnet_id,
-            bus_subnet_id=cluster.network_config.admin_subnet_id,
-            admin_network_id=cluster.network_config.admin_subnet_id,
-            bus_network_id=cluster.network_config.bus_network_id,
-            floatingip_pool="physnet2",
-            subnet_cidr=cluster.network_config.pod_cidr,
-            external_net=
-            use_existing_network=True)
-        tfvars_str = json.dumps(tfvars, default=lambda o: o.__dict__, indent=2)
+
+        tfvars_str = json.dumps(cluster, default=lambda o: o.__dict__, indent=2)
         #result = subprocess.run(["json2hcl", tfvars_str], capture_output=True, text=True)
         with open("output.tfvars.json", "w") as f:
             f.write(tfvars_str)
@@ -152,9 +128,9 @@ def get_cluster_kubeconfig(cluster):
             "server: https://127.0.0.1:6443",
             f"server: https://{master_ip}:6443"
         )
-        
+        get_engine()
         # 保存kubeconfig到数据库
-        with Session(Database.engine) as session:
+        with Session(engine) as session:
             db_cluster = session.get(Database.Cluster, cluster.id)
             db_cluster.kube_config = kubeconfig
             session.commit()
@@ -166,14 +142,18 @@ def get_cluster_kubeconfig(cluster):
         return None
     
 @celery_app.task
-def create_cluster(cluster):
+def create_cluster(cluster_dict):
     try:
+        cluster = ClusterTFVarsObject(**cluster_dict)
         # 等待10s模拟集群创建过程
         # 1. 使用Terraform创建基础设施
+        sleep(15)
         terraform_result = create_infrastructure(cluster)
+        sleep(10)
         if not terraform_result:
             raise Exception("Terraform infrastructure creation failed")
-           
+        # 打印日志
+        print("Terraform infrastructure creation succeeded")
         # 2. 使用Ansible部署K8s集群
         ansible_result = deploy_kubernetes(cluster)
         if not ansible_result:
@@ -181,7 +161,7 @@ def create_cluster(cluster):
         # 获取集群的kube_config
         kube_config = get_cluster_kubeconfig(cluster)
         # 更新集群状态为running
-        with Session(Database.engine) as session:
+        with Session(get_engine()) as session:
             db_cluster = session.get(Database.Cluster, cluster.id)
             db_cluster.status = 'running'
             db_cluster.kube_config = kube_config
@@ -190,11 +170,11 @@ def create_cluster(cluster):
     except Exception as e:
         # 发生错误时更新集群状态为"失败"
           # 发生错误时更新集群状态为failed
-        with Session(Database.engine) as session:
-            db_cluster = session.get(Database.Cluster, cluster.id)
-            db_cluster.status = 'failed'
-            db_cluster.error_message = str(e)
-            session.commit()
+        # with Session(get_engine()) as session:
+        #     db_cluster = session.get(Database.Cluster, cluster.id)
+        #     db_cluster.status = 'failed'
+        #     db_cluster.error_message = str(e)
+        #     session.commit()
         # 重新抛出异常供 Celery 处理
         raise
 

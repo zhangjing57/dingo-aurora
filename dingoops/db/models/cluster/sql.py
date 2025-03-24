@@ -15,7 +15,7 @@ from enum import Enum
 # engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3dEHFg@10.220.56.254:3306/dingoops?charset=utf8mb3", echo=True)
 # 资产排序字段字典
 cluster_dir_dic= {"asset_type":Cluster.type,"create_time":Cluster.create_time,
-              "name":Cluster.na, "manufacturer_name":AssetManufacturesInfo.name, }
+              "name":Cluster.name,"status":Cluster.status,"region_name":Cluster.region_name}
 class ClusterSQL:
 
     @classmethod
