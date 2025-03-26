@@ -19,25 +19,14 @@ runcmd:
 
 %{~ if netplan_critical_dhcp_interface != "" }
 write_files:
-  - path: /usr/local/bin/get_interface_by_mac.sh
-    permissions: '0755'
-    content: |
-      TARGET_CIDR=${ bus_cidr }
-      for if in $(ls /sys/class/net/); do
-        if ip addr show $if | grep -q "$TARGET_CIDR"; then
-          echo "$if"
-          exit 0
-        fi
-      done
   - path: /etc/netplan/90-critical-dhcp.yaml
     content: |
       network:
         version: 2
         ethernets:
-          $(bash /usr/local/bin/get_interface_by_mac.sh "${target_mac}"):
+          ${ netplan_critical_dhcp_interface }:
             dhcp4: true
-            dhcp4-overrides:
-              use-routes: false
+            critical: true
 %{~ endif }
 
 mounts:
@@ -63,3 +52,4 @@ mounts:
 #  trusted: |
 #      -----BEGIN CERTIFICATE-----
 %{~ endif }
+

@@ -25,7 +25,8 @@ module "ips" {
   floatingip_pool               = var.floatingip_pool
   number_of_bastions            = var.number_of_bastions
   external_net                  = var.external_net
-  admin_network_name                  = var.admin_network_name
+  admin_network_name            = var.admin_network_name
+  admin_network_id              = var.admin_network_id
   router_id                     = module.network.router_id
   k8s_nodes                     = var.k8s_nodes
   k8s_masters                   = var.k8s_masters
@@ -74,6 +75,8 @@ module "compute" {
   flavor_gfs_node                              = var.flavor_gfs_node
   bus_network_name                             = var.bus_network_name
   admin_network_name                           = var.admin_network_name
+  bus_network_id                               = var.bus_network_id
+  admin_network_id                             = var.admin_network_id
   flavor_bastion                               = var.flavor_bastion
   k8s_master_fips                              = module.ips.k8s_master_fips
   k8s_master_no_etcd_fips                      = module.ips.k8s_master_no_etcd_fips
@@ -107,12 +110,9 @@ module "compute" {
   port_security_enabled                        = var.port_security_enabled
   force_null_port_security                     = var.force_null_port_security
   network_router_id                            = module.network.router_id
-  admin_network_id                             = module.network.admin_network_id
-  bus_network_id                               = module.network.bus_network_id
   use_existing_network                         = var.use_existing_network
   private_subnet_id                            = module.network.subnet_id
   additional_server_groups                     = var.additional_server_groups
-  bus_cidr                                     = module.network.bus_cidr
   depends_on = [
     module.network.subnet_id
   ]

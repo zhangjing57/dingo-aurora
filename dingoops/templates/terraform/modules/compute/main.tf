@@ -21,19 +21,18 @@ data "cloudinit_config" "cloudinit" {
     content = templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
       extra_partitions = [],
       netplan_critical_dhcp_interface = ""
-      bus_cidr = var.bus_cidr
     })
   }
 }
 
 data "openstack_networking_network_v2" "k8s_admin_network" {
   count = var.use_existing_network ? 1 : 0
-  name  = var.admin_network_name
+  id  = var.admin_network_id
 }
 
 data "openstack_networking_network_v2" "bus_k8s_network" {
   count = var.use_existing_network ? 1 : 0
-  name  = var.bus_network_name
+  id  = var.bus_network_id
 }
 
 resource "openstack_compute_keypair_v2" "k8s" {
@@ -49,7 +48,6 @@ locals {
   image_to_use_gfs = var.image_gfs_uuid != "" ? var.image_gfs_uuid : var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.gfs_image[0].id
 # image_master uuidimage_gfs_uuid
   image_to_use_master = var.image_master_uuid != "" ? var.image_master_uuid : var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.image_master[0].id
-
   k8s_nodes_settings = {
     for name, node in var.k8s_nodes :
       name => {
@@ -74,6 +72,15 @@ locals {
         "bus_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network ? data.openstack_networking_network_v2.bus_k8s_network[0].id : var.bus_network_id)
       }
   }
+}
+locals {
+  #将segments集合转换为列表
+  segments_list = [for s in data.openstack_networking_network_v2.bus_k8s_network[0].segments : s]
+  # 获取第一个segment(如果存在)
+  first_segment = length(local.segments_list) > 0 ? local.segments_list[0] : null
+  # 提供默认值以防止null
+  segmentation_id = local.first_segment != null ? local.first_segment.segmentation_id : "1000"
+  network_type = local.first_segment != null ? local.first_segment.network_type : "vlan"
 }
 
 resource "openstack_networking_port_v2" "k8s_admin_master_port" {
@@ -352,8 +359,8 @@ resource "openstack_networking_trunk_v2" "trunk_masters" {
   port_id        = openstack_networking_port_v2.k8s_masters_admin_port[each.key].id
   sub_port {
     port_id           = openstack_networking_port_v2.k8s_masters_bus_port[each.key].id
-    segmentation_id   = openstack_networking_network_v2.bus_k8s_network.segments.segmentation_id
-    segmentation_type = openstack_networking_network_v2.bus_k8s_network.segments.network_type
+    segmentation_id   = local.segmentation_id
+    segmentation_type = local.network_type
   }
 }
 
@@ -381,14 +388,6 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
   network {
     port = openstack_networking_port_v2.k8s_masters_admin_port[each.key].id
   }
-
-  dynamic "scheduler_hints" {
-    for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
-    content {
-      group = openstack_compute_servergroup_v2.k8s_master[0].id
-    }
-  }
-
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "%{if each.value.etcd == true}etcd,%{endif}kube_control_plane,${var.supplementary_master_groups},k8s_cluster%{if each.value.floating_ip == false},no_floating%{endif}"
@@ -425,7 +424,7 @@ resource "openstack_networking_port_v2" "k8s_nodes_admin_port" {
 resource "openstack_networking_port_v2" "k8s_nodes_bus_port" {
   for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name                  = "${var.cluster_name}-k8s-${each.key}"
-  network_id            = local.k8s_masters_settings[each.key].bus_network_id
+  network_id            = local.k8s_nodes_settings[each.key].bus_network_id
   admin_state_up        = "true"
   dynamic "fixed_ip" {
     for_each = var.private_subnet_id == "" ? [] : [true]
@@ -447,11 +446,11 @@ resource "openstack_networking_trunk_v2" "trunk_nodes" {
   for_each       = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name           = "${var.cluster_name}-k8s-${each.key}"
   admin_state_up = "true"
-  port_id        = openstack_networking_port_v2.k8s_masters_admin_port[each.key].id
+  port_id        = openstack_networking_port_v2.k8s_nodes_admin_port[each.key].id
   sub_port {
-    port_id           = openstack_networking_port_v2.k8s_masters_bus_port[each.key].id
-    segmentation_id   = openstack_networking_network_v2.bus_k8s_network.segments.segmentation_id
-    segmentation_type = openstack_networking_network_v2.bus_k8s_network.segments.network_type
+    port_id           = openstack_networking_port_v2.k8s_nodes_bus_port[each.key].id
+    segmentation_id   = local.segmentation_id
+    segmentation_type = local.network_type
   }
 }
 
@@ -459,17 +458,17 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   for_each          = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name              = "${var.cluster_name}-k8s-${each.key}"
   availability_zone = each.value.az
-  image_id          = local.k8s_masters_settings[each.key].use_local_disk ? local.k8s_masters_settings[each.key].image_id : null
+  image_id          = local.k8s_nodes_settings[each.key].use_local_disk ? local.k8s_nodes_settings[each.key].image_id : null
   flavor_id         = each.value.flavor
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = !local.k8s_masters_settings[each.key].use_local_disk ? [local.k8s_masters_settings[each.key].image_id] : []
+    for_each = !local.k8s_nodes_settings[each.key].use_local_disk ? [local.k8s_nodes_settings[each.key].image_id] : []
     content {
       uuid                  = block_device.value
       source_type           = "image"
-      volume_size           = local.k8s_masters_settings[each.key].volume_size
-      volume_type           = local.k8s_masters_settings[each.key].volume_type
+      volume_size           = local.k8s_nodes_settings[each.key].volume_size
+      volume_type           = local.k8s_nodes_settings[each.key].volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -500,12 +499,12 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
 resource "openstack_networking_floatingip_associate_v2" "k8s_masters" {
   for_each              = var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? { for key, value in var.k8s_masters : key => value if value.floating_ip } : {}
   floating_ip           = var.k8s_masters_fips[each.key].address
-  port_id               = openstack_networking_port_v2.k8s_masters_port[each.key].id
+  port_id               = openstack_networking_port_v2.k8s_admin_master_port[each.key].id
 }
 
 
 resource "openstack_networking_floatingip_associate_v2" "k8s_nodes" {
   for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? { for key, value in var.k8s_nodes : key => value if value.floating_ip } : {}
   floating_ip           = var.k8s_nodes_fips[each.key].address
-  port_id               = openstack_networking_port_v2.k8s_nodes_port[each.key].id
+  port_id               = openstack_networking_port_v2.k8s_nodes_admin_port[each.key].id
 }

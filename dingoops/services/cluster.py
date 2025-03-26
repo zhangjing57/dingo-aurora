@@ -169,7 +169,7 @@ class ClusterService:
         try:
             cluster_info_db = self.convert_clusterinfo_todb(cluster)
             # 保存对象到数据库
-            cluster_id = ClusterSQL.create_cluster(cluster_info_db)
+            res = ClusterSQL.create_cluster(cluster_info_db)
             # 保存节点信息到数据库
             # cluster_id = AssetSQL.create_cluster(cluster_info_db)
             # 调用celery_app项目下的work.py中的create_cluster方法
@@ -183,7 +183,7 @@ class ClusterService:
                 
             # 创建terraform变量
             tfvars = ClusterTFVarsObject(
-                id = cluster_id,
+                id = cluster_info_db.id,
                 cluster_name=cluster.name,
                 image=cluster.node_config[0].image,
                 k8s_masters=k8s_masters,

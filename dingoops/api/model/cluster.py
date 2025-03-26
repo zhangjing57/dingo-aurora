@@ -29,7 +29,7 @@ class NodeConfigObject(BaseModel):
     
 class NodeGroup(BaseModel):
     az: Optional[str] = Field(None, description="可用域")
-    flavor_id: Optional[str] = Field(None, description="规格")
+    flavor: Optional[str] = Field(None, description="规格")
     floating_ip: Optional[str] = Field(None, description="浮动ip")
     etcd: Optional[str] = Field(None, description="是否是etcd节点")
     
@@ -83,7 +83,7 @@ class ClusterTFVarsObject(BaseModel):
     bus_network_id: Optional[str] = Field(None, description="业务网络id")
     admin_network_id: Optional[str] = Field(None, description="管理网id")
     bus_subnet_id: Optional[str] = Field(None, description="业务子网id")
-    floatingip_pool: Optional[str] = Field(None, description="节点配置")
+    floatingip_pool: Optional[bool] = Field(None, description="节点配置")
     subnet_cidr: Optional[str] = Field(None, description="运行时类型")
     use_existing_network: Optional[str] = Field(None, description="是否使用已有网络")
     external_net: Optional[str] = Field(None, description="外部网络id")

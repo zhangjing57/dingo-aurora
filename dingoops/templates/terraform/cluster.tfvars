@@ -60,8 +60,8 @@ flavor_k8s_node = "1"
 #flavor_gfs_node = "<UUID>"
 
 # networking
-admin_network_name = "AIDC2-vlan4056-2"
-bus_network_name = "mall-share-net-vlan-4058"
+admin_network_id = "AIDC2-vlan4056-2"
+bus_network_id = "mall-share-net-vlan-4058"
 # Use a existing network with the name of network_name. Set to false to create a network with name of network_name.
 use_existing_network = true
 

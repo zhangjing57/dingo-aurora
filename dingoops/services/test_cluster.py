@@ -9,6 +9,7 @@ class TestClusterService(unittest.TestCase):
         self.cluster_service = ClusterService()
         # Create a test cluster object
         self.cluster = ClusterObject(
+            id="new-cluster-id",
             name="test-cluster",
             node_count=3,
             node_config=[
@@ -16,11 +17,13 @@ class TestClusterService(unittest.TestCase):
                 NodeConfigObject(role="worker", type="vm", flavor_id="m1.medium", count=2, image="ubuntu-20.04")
             ],
             network_config=NetworkConfigObject(
-                network_id="net-123",
+                admin_network_id="net-123",
                 pod_cidr="10.0.0.0/24",
                 router_id="router-123",
                 admin_subnet_id="subnet-123",
-                bus_network_id="bus-network-123"
+                bus_network_id="bus-network-123",
+                bus_subnet_id="bus-network-123"
+                
             )
         )
 

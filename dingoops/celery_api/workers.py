@@ -4,7 +4,7 @@ import os
 import subprocess
 from typing import Dict, Optional
 from celery import Celery
-from databases import Database
+from dingoops.db.models.cluster.models import Cluster
 from pydantic import BaseModel, Field
 from fastapi import Path
 from pathlib import Path as PathLib
@@ -130,8 +130,8 @@ def get_cluster_kubeconfig(cluster):
         )
         get_engine()
         # 保存kubeconfig到数据库
-        with Session(engine) as session:
-            db_cluster = session.get(Database.Cluster, cluster.id)
+        with Session(get_engine()) as session:
+            db_cluster = session.get(Cluster, cluster.id)
             db_cluster.kube_config = kubeconfig
             session.commit()
             
@@ -162,7 +162,7 @@ def create_cluster(cluster_dict):
         kube_config = get_cluster_kubeconfig(cluster)
         # 更新集群状态为running
         with Session(get_engine()) as session:
-            db_cluster = session.get(Database.Cluster, cluster.id)
+            db_cluster = session.get(cluster, cluster.id)
             db_cluster.status = 'running'
             db_cluster.kube_config = kube_config
             session.commit()
@@ -187,8 +187,8 @@ def create_node(cluster_id, node_name):
         
     except Exception as e:
         # 发生错误时更新集群状态为"失败"
-        with Session(Database.engine) as session:
-            cluster = session.get(Database.Cluster, cluster.id)
+        with Session(get_engine()) as session:
+            cluster = session.get(Cluster, cluster.id)
             cluster.status = 'failed'
             cluster.error_message = str(e)
             session.commit()
@@ -198,11 +198,12 @@ def create_node(cluster_id, node_name):
       
 @celery_app.task(bind=True)
 def install_component(cluster_id, node_name):
-    with Session(Database.engine) as session:
-        cluster = session.get(Database.Cluster, cluster_id)
-        if not cluster:
-            raise ValueError(f"Cluster with ID {cluster_id} does not exist")
-        node = Database.Node(cluster_id=cluster_id, name=node_name)
-        session.add(node)
-        session.commit()
-        return node.id
+    with Session(get_engine()) as session:
+        # cluster = session.get(Cluster, cluster_id)
+        # if not cluster:
+        #     raise ValueError(f"Cluster with ID {cluster_id} does not exist")
+        # node = Node(cluster_id=cluster_id, name=node_name)
+        # session.add(node)
+        # session.commit()
+        # return node.id
+        pass

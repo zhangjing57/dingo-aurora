@@ -140,6 +140,17 @@ variable "bus_network_name" {
   description = "name of the internal network to use"
   default     = "internal"
 }
+
+variable "admin_network_id" {
+  description = "name of the internal network to use"
+  default     = "internal"
+}
+variable "bus_network_id" {
+  description = "name of the internal network to use"
+  default     = "internal"
+}
+
+
 variable "use_existing_network" {
   description = "Use an existing network"
   type        = bool
@@ -420,10 +431,6 @@ variable "k8s_master_loadbalancer_server_port" {
 }
 
 variable "k8s_master_loadbalancer_public_ip" {
-  type    = string
-  default = ""
-}
-variable "bus_cidr" {
   type    = string
   default = ""
 }

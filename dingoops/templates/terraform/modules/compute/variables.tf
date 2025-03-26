@@ -181,6 +181,8 @@ variable "k8s_nodes" {
   }))
 }
 
+
+
 variable "additional_server_groups" {
   type = map(object({
     policy = string
@@ -273,6 +275,3 @@ variable "private_subnet_id" {
   type = string
 }
 
-variable "bus_cidr" {
-  type = string
-}
