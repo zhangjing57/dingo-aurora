@@ -142,11 +142,11 @@ variable "bus_network_name" {
 }
 
 variable "admin_network_id" {
-  description = "name of the internal network to use"
+  description = "id of the internal network to use"
   default     = "internal"
 }
 variable "bus_network_id" {
-  description = "name of the internal network to use"
+  description = "id of the internal network to use"
   default     = "internal"
 }
 
@@ -431,6 +431,11 @@ variable "k8s_master_loadbalancer_server_port" {
 }
 
 variable "k8s_master_loadbalancer_public_ip" {
+  type    = string
+  default = ""
+}
+
+variable "key_pair" {
   type    = string
   default = ""
 }

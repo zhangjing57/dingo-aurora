@@ -116,6 +116,7 @@ module "compute" {
   depends_on = [
     module.network.subnet_id
   ]
+  key_pair                                     = var.key_pair
 }
 
 module "loadbalancer" {

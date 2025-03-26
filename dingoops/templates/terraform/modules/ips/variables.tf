@@ -12,6 +12,8 @@ variable "external_net" {}
 
 variable "admin_network_name" {}
 
+variable "admin_network_id" {}
+
 variable "router_id" {
   default = ""
 }

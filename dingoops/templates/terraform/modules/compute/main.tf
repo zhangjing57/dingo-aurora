@@ -27,18 +27,18 @@ data "cloudinit_config" "cloudinit" {
 
 data "openstack_networking_network_v2" "k8s_admin_network" {
   count = var.use_existing_network ? 1 : 0
-  id  = var.admin_network_id
+  network_id  = var.admin_network_id
 }
 
 data "openstack_networking_network_v2" "bus_k8s_network" {
   count = var.use_existing_network ? 1 : 0
-  id  = var.bus_network_id
+  network_id  = var.bus_network_id
 }
 
-resource "openstack_compute_keypair_v2" "k8s" {
-  name       = "kubernetes-${var.cluster_name}"
-  public_key = chomp(file(var.public_key_path))
-}
+# resource "openstack_compute_keypair_v2" "k8s" {
+#   name       = "kubernetes-${var.cluster_name}"
+#   public_key = chomp(file(var.public_key_path))
+# }
 
 locals {
 
@@ -51,6 +51,7 @@ locals {
   k8s_nodes_settings = {
     for name, node in var.k8s_nodes :
       name => {
+        "key_pair"       = var.key_pair,
         "use_local_disk" = (node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.node_root_volume_size_in_gb) == 0,
         "image_id"       = node.image_id != null ? node.image_id : local.image_to_use_node,
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.node_root_volume_size_in_gb,
@@ -64,6 +65,7 @@ locals {
   k8s_masters_settings = {
     for name, node in var.k8s_masters :
       name => {
+        "key_pair"       = var.key_pair,
         "use_local_disk" = (node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.master_root_volume_size_in_gb) == 0,
         "image_id"       = node.image_id != null ? node.image_id : local.image_to_use_master,
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.master_root_volume_size_in_gb,
@@ -135,7 +137,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   availability_zone = element(var.az_list, count.index)
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
-  key_pair          = openstack_compute_keypair_v2.k8s.name
+  key_pair          = var.key_pair
   user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
@@ -223,7 +225,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   availability_zone = element(var.az_list_node, count.index)
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
-  key_pair          = openstack_compute_keypair_v2.k8s.name
+  key_pair          =var.key_pair
   user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
@@ -264,7 +266,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 resource "openstack_networking_port_v2" "k8s_nodes_port" {
   for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name                  = "${var.cluster_name}-k8s-node-${each.key}"
-  network_id            = local.k8s_nodes_settings[each.key].network_id
+  network_id            = local.k8s_nodes_settings[each.key].admin_network_id
   admin_state_up        = "true"
   #port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   #security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
@@ -370,7 +372,7 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
   availability_zone = each.value.az
   image_id          = local.k8s_masters_settings[each.key].use_local_disk ? local.k8s_masters_settings[each.key].image_id : null
   flavor_id         = each.value.flavor
-  key_pair          = openstack_compute_keypair_v2.k8s.name
+  key_pair          = var.key_pair
 
   dynamic "block_device" {
     for_each = !local.k8s_masters_settings[each.key].use_local_disk ? [local.k8s_masters_settings[each.key].image_id] : []
@@ -460,7 +462,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   availability_zone = each.value.az
   image_id          = local.k8s_nodes_settings[each.key].use_local_disk ? local.k8s_nodes_settings[each.key].image_id : null
   flavor_id         = each.value.flavor
-  key_pair          = openstack_compute_keypair_v2.k8s.name
+  key_pair          = var.key_pair
 
   dynamic "block_device" {
     for_each = !local.k8s_nodes_settings[each.key].use_local_disk ? [local.k8s_nodes_settings[each.key].image_id] : []
@@ -478,13 +480,6 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   network {
     port = openstack_networking_port_v2.k8s_nodes_admin_port[each.key].id
   }
-
-  dynamic "scheduler_hints" {
-    for_each = local.k8s_nodes_settings[each.key].server_group
-    content {
-      group = scheduler_hints.value
-    }
-  }
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_node,k8s_cluster,%{if !each.value.floating_ip}no_floating,%{endif}${var.supplementary_node_groups}${each.value.extra_groups != null ? ",${each.value.extra_groups}" : ""}"
@@ -499,7 +494,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
 resource "openstack_networking_floatingip_associate_v2" "k8s_masters" {
   for_each              = var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? { for key, value in var.k8s_masters : key => value if value.floating_ip } : {}
   floating_ip           = var.k8s_masters_fips[each.key].address
-  port_id               = openstack_networking_port_v2.k8s_admin_master_port[each.key].id
+  port_id               = openstack_networking_port_v2.k8s_masters_admin_port[each.key].id
 }
 
 
