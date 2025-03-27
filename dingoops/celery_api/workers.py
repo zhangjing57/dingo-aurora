@@ -2,6 +2,7 @@ from asyncio import sleep
 import json
 import os
 import subprocess
+import time
 from typing import Dict, Optional
 from celery import Celery
 from dingoops.db.models.cluster.models import Cluster
@@ -18,6 +19,7 @@ BASE_DIR = os.getcwd()
 TERRAFORM_DIR = os.path.join(BASE_DIR, "dingoops", "templates", "terraform")
 ANSIBLE_DIR = os.path.join(BASE_DIR, "templates", "ansible-deploy")
 WORK_DIR = CONF.DEFAULT.cluster_work_dir
+
 
 class NodeGroup(BaseModel):
     az: Optional[str] = Field(None, description="可用域")
@@ -77,14 +79,13 @@ def deploy_kubernetes(cluster):
     """使用Ansible部署K8s集群"""
     try:
         # 将templates下的ansible-deploy目录复制到WORK_DIR/cluster.id目录下
-        cluster_dir = WORK_DIR / str(cluster.id)
-        subprocess.run(["cp", "-r", str(ANSIBLE_DIR), str(cluster_dir)])
+        cluster_dir = os.path.join(WORK_DIR, str(cluster.id))
         os.chdir(cluster_dir/"ansible-deploy")
         
         # 执行ansible-playbook
         subprocess.run([
             "ansible-playbook",
-            "-i", "inventory/hosts",
+            "-i", "inventory/hosts.yaml",
             "cluster.yml",
         ], check=True)
         
@@ -150,10 +151,57 @@ def create_cluster(cluster_dict):
         sleep(15)
         terraform_result = create_infrastructure(cluster)
         sleep(10)
+        
         if not terraform_result:
             raise Exception("Terraform infrastructure creation failed")
         # 打印日志
         print("Terraform infrastructure creation succeeded")
+        # 根据生成inventory
+        # 复制script下面的host文件到WORK_DIR/cluster.id目录下
+        cluster_dir = WORK_DIR / str(cluster.id)
+        subprocess.run(["cp", "-r", str(ANSIBLE_DIR), str(cluster_dir)])
+        #执行python3 host --list，将生成的内容转换为yaml格式写入到inventory/inventory.yaml文件中
+        res = subprocess.run(["执行python3", "host", "--list"], capture_output=True)
+        if res.returncode != 0:
+            raise Exception("Error generating Ansible inventory")
+        with open(cluster_dir/"ansible-deploy/inventory/inventory.yaml", "w") as f:
+            f.write(res.stdout)
+        # 执行ansible命令验证是否能够连接到所有节点
+        res = subprocess.run([
+            "ansible",
+            "-i", "inventory/hosts.yaml",
+            "-m", "ping",
+            "all"
+        ], capture_output=True)
+        if res.returncode != 0:
+            # Keep trying to connect to all nodes until successful
+            max_attempts = 12  # Try for up to 1 minute (12 * 5 seconds)
+            attempt = 1
+            start_time = time.time()
+            timeout = 1800  # 30 minutes in seconds
+            while True:
+                if time.time() - start_time > timeout:
+                    raise Exception("Operation timed out after 30 minutes. Terminating execution.")
+                print(f"Attempting to connect to all nodes with Ansible (attempt {attempt}/{max_attempts})...")
+                res = subprocess.run([
+                    "ansible",
+                    "-i", "inventory/hosts",
+                    "-m", "ping",
+                    "all"
+                ], capture_output=True)
+                
+                if res.returncode == 0:
+                    print("Successfully connected to all nodes")
+                    break
+                
+                attempt += 1
+                if attempt > max_attempts:
+                    raise Exception(f"Failed to connect to all nodes with Ansible ping after {max_attempts} attempts")
+                
+                print(f"Connection attempt failed. Waiting 5 seconds before retrying...")
+                time.sleep(5)
+                # Add timeout check - terminate after 30 minutes
+
         # 2. 使用Ansible部署K8s集群
         ansible_result = deploy_kubernetes(cluster)
         if not ansible_result:

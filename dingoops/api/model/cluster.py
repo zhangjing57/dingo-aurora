@@ -87,3 +87,4 @@ class ClusterTFVarsObject(BaseModel):
     subnet_cidr: Optional[str] = Field(None, description="运行时类型")
     use_existing_network: Optional[str] = Field(None, description="是否使用已有网络")
     external_net: Optional[str] = Field(None, description="外部网络id")
+    group_vars_path:  Optional[str] = Field(None, description="集群变量路径")

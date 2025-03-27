@@ -1,0 +1,64 @@
+---
+- name: Bootstrap hosts for Ansible
+  hosts: k8s_cluster:etcd:calico_rr
+  strategy: linear
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  vars:
+    # Need to disable pipelining for bootstrap-os as some systems have requiretty in sudoers set, which makes pipelining
+    # fail. bootstrap-os fixes this on these systems, so in later plays it can be enabled.
+    ansible_ssh_pipelining: false
+    terraform_mac: "{{ hostvars[inventory_hostname]['network'][1]['mac'] }}"
+  roles:
+    - { role: bootstrap-os, tags: bootstrap-os}
+    - { role: kubespray-defaults }
+
+- name: Gather facts
+  hosts: k8s_cluster:etcd:calico_rr
+  gather_facts: false
+  tags: always
+  tasks:
+    - name: Gather minimal facts
+      setup:
+        gather_subset: '!all'
+
+    # filter match the following variables:
+    # ansible_default_ipv4
+    # ansible_default_ipv6
+    # ansible_all_ipv4_addresses
+    # ansible_all_ipv6_addresses
+    - name: Gather necessary facts (network)
+      setup:
+        gather_subset: '!all,!min,network'
+
+    # filter match the following variables:
+    # ansible_memtotal_mb
+    # ansible_swaptotal_mb
+    - name: Gather necessary facts (hardware)
+      setup:
+        gather_subset: '!all,!min,hardware'
+        filter: "ansible_*total_mb"
+    - name: 设置第二个网卡MAC地址变量
+      set_fact:
+        terraform_mac: "{{ hostvars[inventory_hostname]['network'][1]['mac'] }}"
+        bus_gateway: "{{ hostvars[inventory_hostname]['network_gateway'] }}"
+        bus_cidr: "{{ hostvars[inventory_hostname]['network_cidr'] }}"
+
+    - name: 显示匹配的网卡名称
+      debug:
+        msg: "匹配的网卡名称: {{ terraform_mac }} {{ bus_gateway }} {{ bus_cidr }}"
+    - name: 查找匹配MAC地址的网卡
+      set_fact:
+        bus_interface: >-
+          {% for interface in ansible_interfaces %}
+          {%- if hostvars[inventory_hostname]['ansible_' + interface]['macaddress'] | default('') == hostvars[inventory_hostname]['network'][1]['mac'] -%}
+          {{ interface }}
+          {%- endif -%}
+          {% endfor %}
+    - name: 显示匹配的网卡名称
+      debug:
+        msg: "匹配的网卡名称: {{ bus_interface }}"
+    - name: 显示网卡信息
+      debug:
+        msg: "{{ hostvars[inventory_hostname]['ansible_' + bus_interface] }}"

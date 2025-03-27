@@ -1,0 +1,10 @@
+---
+- name: Kube-OVN | Create Kube-OVN manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: "0755"
+  with_items:
+    - {name: install-kubeovn, file: install-kubeovn-1.13.1-stable.sh}
+  register: kube_ovn_node_manifests
+
