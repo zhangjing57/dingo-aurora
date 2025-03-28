@@ -29,7 +29,7 @@ class Cluster(Base):
     bus_address = Column(String(length=255), nullable=True)
     api_address = Column(String(length=255), nullable=True)
     cni = Column(String(length=255), nullable=True)
-    kube_config = Column(String(length=255), nullable=True)
+    kube_config = Column(Text, nullable=False)
     
     create_time = Column(DateTime, nullable=True)
     update_time = Column(DateTime, nullable=True)
@@ -38,13 +38,25 @@ class Cluster(Base):
     
     
 # 节点对象
-class nodeinfo(Base):
+class Nodeinfo(Base):
     __tablename__ = "ops_node_info"
 
     id = Column(String(length=128), primary_key= True, nullable=False, index=True, unique=False)
-    parent_id = Column(String(length=128), nullable=True)
-    asset_type_name = Column(String(length=128), nullable=True)
-    asset_type_name_zh = Column(String(length=128), nullable=True)
-    queue = Column(Integer, default=0, nullable= False)
-    description = Column(String(length=255), nullable=True)
+    cluster_id = Column(String(length=128), nullable=True)
+    project_id = Column(String(length=128), nullable=True)
+    name = Column(String(length=128), nullable=True)
+    openstack_id = Column(String(length=128), nullable=True)
+    admin_address = Column(String(length=128), default=0, nullable= False)
+    bus_address = Column(String(length=128), default=0, nullable= False)
+    role = Column(String(length=128), default=0, nullable= False)
+    node_type = Column(String(length=128), default=0, nullable= False)
+    region = Column(String(length=128), default=0, nullable= False)
+    status = Column(String(length=128), default=0, nullable= False)
+    private_key = Column(Text, nullable=False)
+    auth_tytpe = Column(String(length=128), default=0, nullable= False)
+    user = Column(String(length=128), default=0, nullable= False)
+    password = Column(String(length=128), default=0, nullable= False)
+    create_time = Column(DateTime, nullable=True)
+    update_time = Column(DateTime, nullable=True)
+    description = Column(String(length=128)(length=255), nullable=True)
     extra = Column(String(length=255), nullable=True)

@@ -19,6 +19,7 @@ from math import ceil
 from oslo_log import log
 from dingoops.api.model.cluster import ClusterTFVarsObject, NodeGroup, ClusterObject
 from dingoops.db.models.cluster.models import Cluster as ClusterDB
+from dingoops.db.models.cluster.models import Nodeinfo as NodeDB
 from utils import neutron
 
 from services.custom_exception import Fail
@@ -180,7 +181,9 @@ class ClusterService:
             k8s_masters = {}
             k8s_nodes = {}
             self.generate_k8s_nodes(cluster, k8s_masters, k8s_nodes)
-                
+             # 保存node信息到数据库
+            node_list = self.convert_clusterinfo_todb(cluster)
+            res = ClusterSQL.create_cluster(cluster_info_db)
             # 创建terraform变量
             tfvars = ClusterTFVarsObject(
                 id = cluster_info_db.id,
@@ -195,9 +198,12 @@ class ClusterService:
                 floatingip_pool="physnet2",
                 subnet_cidr=cluster.network_config.pod_cidr,
                 external_net=external_net[0]['id'],
-                use_existing_network=True)
+                use_existing_network=True,
+                group_vars_path="group_vars",
+                password=cluster.node_config[0].password
+                )
                 #调用celery_app项目下的work.py中的create_cluster方法
-            result = celery_app.send_task("dingoops.celery_api.workers.create_cluster", args=[tfvars.dict()])
+            result = celery_app.send_task("dingoops.celery_api.workers.create_cluster", args=[tfvars.dict(),cluster.dict()])
             logging.info(result.get())
         except Fail as e:
             raise e
@@ -232,4 +238,18 @@ class ClusterService:
         cluster_info_db.update_time = datetime.now()
         cluster_info_db.description = cluster.description
         cluster_info_db.extra = cluster.extra
+        return cluster_info_db
+    def convert_nodeinfo_todb(self, cluster:ClusterObject):
+        nodeinfo_list = []
+    
+        if not cluster or not hasattr(cluster, 'node_config') or not cluster.node_config:
+            return nodeinfo_list
+        
+        # 遍历 node_config 并转换为 Nodeinfo 对象
+        for node_conf in cluster.node_config:
+            nodeinfo = NodeDB(**node_conf)
+            nodeinfo_list.append(nodeinfo)
+        
+        return nodeinfo_list
+        node_info_db.node_type = ""
         return cluster_info_db

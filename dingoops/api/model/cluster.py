@@ -23,6 +23,11 @@ class NodeConfigObject(BaseModel):
     count: Optional[int] = Field(None, description="项目id")
     image: Optional[str] = Field(None, description="用户id")
     flavor_id: Optional[str] = Field(None, description="节点规格")
+    openstack_id: Optional[str] = Field(None, description="node在openstack中的id")
+    private_key: Optional[str] = Field(None, description="node在openstack中的id")
+    user: Optional[str] = Field(None, description="node在openstack中的id")
+    password: Optional[str] = Field(None, description="node在openstack中的id")
+    auth_type: Optional[str] = Field(None, description="鉴权方式")
     role: Optional[str] = Field(None, description="节点角色")
     type: Optional[str] = Field(None, description="节点类型vm/metal")
     security_group: Optional[str] = Field(None, description="安全组名称")
@@ -42,7 +47,6 @@ class ClusterObject(DingoopsObject):
     node_config: Optional[List[NodeConfigObject]] = Field(None, description="节点配置")
     runtime: Optional[str] = Field(None, description="运行时类型")
     type: Optional[str] = Field(None, description="集群类型")
-    
     version: Optional[str] = Field(None, description="k8s版本")
     kube_config: Optional[str] = Field(None, description="cni插件")
 
@@ -88,3 +92,4 @@ class ClusterTFVarsObject(BaseModel):
     use_existing_network: Optional[str] = Field(None, description="是否使用已有网络")
     external_net: Optional[str] = Field(None, description="外部网络id")
     group_vars_path:  Optional[str] = Field(None, description="集群变量路径")
+    password: Optional[str] = Field(None, description="密码")

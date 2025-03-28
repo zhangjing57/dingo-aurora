@@ -21,6 +21,7 @@ data "cloudinit_config" "cloudinit" {
     content = templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
       extra_partitions = [],
       netplan_critical_dhcp_interface = ""
+      password = var.password
     })
   }
 }
@@ -373,7 +374,10 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
   image_id          = local.k8s_masters_settings[each.key].use_local_disk ? local.k8s_masters_settings[each.key].image_id : null
   flavor_id         = each.value.flavor
   key_pair          = var.key_pair
-
+  user_data         = each.value.cloudinit != null ? templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
+    extra_partitions = each.value.cloudinit.extra_partitions,
+    netplan_critical_dhcp_interface = each.value.cloudinit.netplan_critical_dhcp_interface,
+  }) : data.cloudinit_config.cloudinit.rendered
   dynamic "block_device" {
     for_each = !local.k8s_masters_settings[each.key].use_local_disk ? [local.k8s_masters_settings[each.key].image_id] : []
     content {

@@ -439,3 +439,8 @@ variable "key_pair" {
   type    = string
   default = ""
 }
+
+variable "password" {
+  type    = string
+  default = ""
+}

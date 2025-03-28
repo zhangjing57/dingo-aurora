@@ -117,6 +117,7 @@ module "compute" {
     module.network.subnet_id
   ]
   key_pair                                     = var.key_pair
+  password                                     = var.password
 }
 
 module "loadbalancer" {

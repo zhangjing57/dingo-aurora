@@ -1,10 +1,13 @@
 from asyncio import sleep
 import json
+import logging
 import os
 import subprocess
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from celery import Celery
+from dingoops.api.model.cluster import ClusterObject
+from dingoops.celery_api.ansible import AnsibleApi
 from dingoops.db.models.cluster.models import Cluster
 from pydantic import BaseModel, Field
 from fastapi import Path
@@ -13,6 +16,9 @@ from requests import Session
 from dingoops.celery_api.celery_app import celery_app
 from dingoops.celery_api import CONF
 from dingoops.db.engines.mysql import get_engine 
+from ansible.executor.playbook_executor import PlaybookExecutor
+# 用于导入资产文件
+from ansible.inventory.manager import InventoryManager
 
 
 BASE_DIR = os.getcwd()
@@ -41,6 +47,7 @@ class ClusterTFVarsObject(BaseModel):
     subnet_cidr: Optional[str] = Field(None, description="运行时类型")
     use_existing_network: Optional[str] = Field(None, description="是否使用已有网络")
     external_net: Optional[str] = Field(None, description="外部网络id")
+    group_vars_path:  Optional[str] = Field(None, description="集群变量路径")
 
 def create_infrastructure(cluster:ClusterTFVarsObject):
     """使用Terraform创建基础设施"""
@@ -54,7 +61,7 @@ def create_infrastructure(cluster:ClusterTFVarsObject):
         # 初始化terraform
         subprocess.run(["terraform", "init"], capture_output=True)
         # 遍历cluster.node_config，组装成
-            
+        
 
         tfvars_str = json.dumps(cluster, default=lambda o: o.__dict__, indent=2)
         #result = subprocess.run(["json2hcl", tfvars_str], capture_output=True, text=True)
@@ -75,21 +82,25 @@ def create_infrastructure(cluster:ClusterTFVarsObject):
         return False
 
 
-def deploy_kubernetes(cluster):
+def deploy_kubernetes(cluster:ClusterObject):
     """使用Ansible部署K8s集群"""
     try:
         # 将templates下的ansible-deploy目录复制到WORK_DIR/cluster.id目录下
-        cluster_dir = os.path.join(WORK_DIR, str(cluster.id))
-        os.chdir(cluster_dir/"ansible-deploy")
-        
-        # 执行ansible-playbook
-        subprocess.run([
-            "ansible-playbook",
-            "-i", "inventory/hosts.yaml",
-            "cluster.yml",
-        ], check=True)
-        
-        return True
+        ansible_dir = os.path.join(WORK_DIR, str(cluster.id), "ansible-deploy")
+        os.chdir(ansible_dir)
+        hostfile = os.path.join(ansible_dir, "inventory", "hosts.yaml")
+
+        ansible_server = {}
+        if cluster.node_config[0].auth_type == "key":
+            #创建private_key.pem文件
+            with open(os.path.join(ansible_dir, "private_key.pem"), "w") as f:
+                f.write(cluster.node_config[0].private_key)
+
+            ansible_server = AnsibleApi(inventory_path=hostfile, default_username="root", private_key_file=os.path.join(ansible_dir, "private_key.pem"))
+        else:
+            ansible_server = AnsibleApi(inventory_path=hostfile, default_username="root", password=cluster.node_config[0].password)
+        ansible_server.run_playbook([os.path.join()])
+        return  ansible_server.get_playbook_result, ansible_server.get_cmd_result()
         
     except subprocess.CalledProcessError as e:
         print(f"Ansible error: {e}")
@@ -142,14 +153,49 @@ def get_cluster_kubeconfig(cluster):
         print(f"Error getting kubeconfig: {e}")
         return None
     
+    
+def wait_for_ansible_result(ansible_client, task_id: str, timeout: int = 3600, interval: int = 5) -> Optional[Dict[str, Any]]:
+
+    start_time = time.time()
+    logging.info(f"等待Ansible任务 {task_id} 完成...")
+    
+    while True:
+        # 检查是否超时
+        if time.time() - start_time > timeout:
+            logging.error(f"等待Ansible任务 {task_id} 结果超时")
+            return None
+        
+        try:
+            # 获取任务结果
+            result = ansible_client.get_playbook_result(task_id)
+            
+            # 检查任务是否完成且成功
+            if result and result.get('status') == 'SUCCESS':
+                logging.info(f"Ansible任务 {task_id} 执行成功")
+                return result
+            elif result and result.get('status') in ['FAILED', 'ERROR']:
+                logging.error(f"Ansible任务 {task_id} 执行失败: {result}")
+                return None
+                
+            # 任务仍在运行，继续等待
+            logging.debug(f"Ansible任务 {task_id} 仍在执行中，继续等待...")
+            
+        except Exception as e:
+            logging.warning(f"获取Ansible任务 {task_id} 结果时出错: {str(e)}，将继续尝试")
+        
+        # 等待一段时间再次检查
+        time.sleep(interval)
+    
+    
 @celery_app.task
-def create_cluster(cluster_dict):
+def create_cluster(cluster_tf_dict,cluster_dict):
     try:
+        cluster_tfvars = ClusterTFVarsObject(**cluster_tf_dict)
         cluster = ClusterTFVarsObject(**cluster_dict)
         # 等待10s模拟集群创建过程
         # 1. 使用Terraform创建基础设施
         sleep(15)
-        terraform_result = create_infrastructure(cluster)
+        terraform_result = create_infrastructure(cluster_tfvars)
         sleep(10)
         
         if not terraform_result:
@@ -158,7 +204,7 @@ def create_cluster(cluster_dict):
         print("Terraform infrastructure creation succeeded")
         # 根据生成inventory
         # 复制script下面的host文件到WORK_DIR/cluster.id目录下
-        cluster_dir = WORK_DIR / str(cluster.id)
+        cluster_dir = WORK_DIR / str(cluster_tfvars.id)
         subprocess.run(["cp", "-r", str(ANSIBLE_DIR), str(cluster_dir)])
         #执行python3 host --list，将生成的内容转换为yaml格式写入到inventory/inventory.yaml文件中
         res = subprocess.run(["执行python3", "host", "--list"], capture_output=True)
@@ -203,7 +249,11 @@ def create_cluster(cluster_dict):
                 # Add timeout check - terminate after 30 minutes
 
         # 2. 使用Ansible部署K8s集群
-        ansible_result = deploy_kubernetes(cluster)
+        ansible_client, ansible_result = deploy_kubernetes(cluster)
+        #阻塞线程，直到ansible_client.get_playbook_result()返回结果成功
+        
+        
+        
         if not ansible_result:
             raise Exception("Ansible kubernetes deployment failed")
         # 获取集群的kube_config

@@ -279,3 +279,6 @@ variable "key_pair" {
   type = string
 }
 
+variable "password" {
+  type = string
+}
