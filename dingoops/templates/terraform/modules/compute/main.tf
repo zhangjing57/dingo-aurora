@@ -400,7 +400,9 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
     depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
-
+  depends_on = [
+    openstack_networking_trunk_v2.trunk_nodes
+  ]
   provisioner "local-exec" {
     command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ${path.module}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_masters_fips : value.address]), 0)}/ > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
   }
@@ -490,7 +492,9 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
     depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
-
+  depends_on = [
+    openstack_networking_trunk_v2.trunk_nodes
+  ]
   provisioner "local-exec" {
     command = "%{if each.value.floating_ip}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
   }

@@ -58,5 +58,5 @@ class Nodeinfo(Base):
     password = Column(String(length=128), default=0, nullable= False)
     create_time = Column(DateTime, nullable=True)
     update_time = Column(DateTime, nullable=True)
-    description = Column(String(length=128)(length=255), nullable=True)
+    description = Column(String(length=255), nullable=True)
     extra = Column(String(length=255), nullable=True)

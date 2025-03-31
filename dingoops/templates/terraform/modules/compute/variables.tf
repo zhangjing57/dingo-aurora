@@ -152,6 +152,7 @@ variable "k8s_masters" {
     root_volume_size_in_gb = optional(number)
     volume_type            = optional(string)
     network_id             = optional(string)
+    cloudinit              = optional(string)
   }))
 }
 

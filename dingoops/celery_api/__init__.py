@@ -1,3 +1,5 @@
+import os
+import subprocess
 from oslo_config import cfg
 from dingoops.utils.common import register_ksa_opts
 # 读取config的信息
@@ -63,3 +65,8 @@ CONF.register_opts(default_opts, default_group)
 # 注册redis配置
 CONF.register_group(redis_group)
 CONF.register_opts(redis_opts, redis_group)
+
+#复制ansible-deploy目录到WORK_DIR目录下
+ansible_dir = os.path.join(os.getcwd(), "dingoops","templates","ansible-deploy")
+WORK_DIR = CONF.DEFAULT.cluster_work_dir
+subprocess.run(["cp", "-r", ansible_dir,WORK_DIR], capture_output=True)
