@@ -20,7 +20,8 @@ data "cloudinit_config" "cloudinit" {
     content_type =  "text/cloud-config"
     content = templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
       extra_partitions = [],
-      netplan_critical_dhcp_interface = ""
+      netplan_critical_dhcp_interface = "",
+      ssh_user = var.ssh_user
       password = var.password
     })
   }
@@ -396,12 +397,13 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
   }
   metadata = {
     ssh_user         = var.ssh_user
+    password         = var.password
     kubespray_groups = "%{if each.value.etcd == true}etcd,%{endif}kube_control_plane,${var.supplementary_master_groups},k8s_cluster%{if each.value.floating_ip == false},no_floating%{endif}"
     depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
   depends_on = [
-    openstack_networking_trunk_v2.trunk_nodes
+    openstack_networking_trunk_v2.trunk_masters
   ]
   provisioner "local-exec" {
     command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ${path.module}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_masters_fips : value.address]), 0)}/ > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
@@ -469,7 +471,10 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   image_id          = local.k8s_nodes_settings[each.key].use_local_disk ? local.k8s_nodes_settings[each.key].image_id : null
   flavor_id         = each.value.flavor
   key_pair          = var.key_pair
-
+  user_data         = each.value.cloudinit != null ? templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
+    extra_partitions = each.value.cloudinit.extra_partitions,
+    netplan_critical_dhcp_interface = each.value.cloudinit.netplan_critical_dhcp_interface,
+  }) : data.cloudinit_config.cloudinit.rendered
   dynamic "block_device" {
     for_each = !local.k8s_nodes_settings[each.key].use_local_disk ? [local.k8s_nodes_settings[each.key].image_id] : []
     content {
@@ -488,6 +493,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   }
   metadata = {
     ssh_user         = var.ssh_user
+    password         = var.password
     kubespray_groups = "kube_node,k8s_cluster,%{if !each.value.floating_ip}no_floating,%{endif}${var.supplementary_node_groups}${each.value.extra_groups != null ? ",${each.value.extra_groups}" : ""}"
     depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip

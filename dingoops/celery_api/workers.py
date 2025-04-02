@@ -59,6 +59,7 @@ class ClusterTFVarsObject(BaseModel):
     number_of_k8s_masters_no_floating_ip_no_etcd: Optional[int] = Field(None, description="无浮动IP且不带ETCD的K8s master节点数量")
     number_of_k8s_nodes: Optional[int] = Field(None, description="K8s worker节点数量")
     number_of_k8s_nodes_no_floating_ip: Optional[int] = Field(None, description="无浮动IP的K8s worker节点数量")
+    ssh_user: Optional[str] = Field(None, description="用户名")
     password: Optional[str] = Field(None, description="密码")
     
     
@@ -68,7 +69,7 @@ def create_infrastructure(cluster:ClusterTFVarsObject):
         
         # 将templat下的terraform目录复制到WORK_DIR/cluster.id目录下
         cluster_dir = os.path.join(WORK_DIR, "ansible-deploy", "inventory", str(cluster.id))
-        dd = subprocess.run(["cp", "-LRp", os.path.join(WORK_DIR, "ansible-deploy", "inventory","sample-inventory"), str(cluster_dir)], capture_output=True)
+        dd = subprocess.run(["cp", "-LRpf", os.path.join(WORK_DIR, "ansible-deploy", "inventory","sample-inventory"), str(cluster_dir)], capture_output=True)
 
         subprocess.run(["cp", "-r", str(TERRAFORM_DIR), str(cluster_dir)], capture_output=True)
         os.chdir(os.path.join(cluster_dir, "terraform"))
@@ -132,20 +133,21 @@ def deploy_kubernetes(cluster:ClusterObject):
     """使用Ansible部署K8s集群"""
     try:
         # 将templates下的ansible-deploy目录复制到WORK_DIR/cluster.id目录下
-        ansible_dir = os.path.join(WORK_DIR, str(cluster.id), "ansible-deploy")
+        ansible_dir = os.path.join(WORK_DIR, "ansible-deploy")
         os.chdir(ansible_dir)
-        hostfile = os.path.join(ansible_dir, "inventory", "hosts.yaml")
-
+        host_file = os.path.join(WORK_DIR, "ansible-deploy", "inventory", str(cluster.id), "hosts")
+        playbook_file  = os.path.join(WORK_DIR, "ansible-deploy", "cluster.yml")
         ansible_server = {}
         if cluster.node_config[0].auth_type == "key":
             #创建private_key.pem文件
             with open(os.path.join(ansible_dir, "private_key.pem"), "w") as f:
                 f.write(cluster.node_config[0].private_key)
 
-            ansible_server = AnsibleApi(inventory_path=hostfile, default_username="root", private_key_file=os.path.join(ansible_dir, "private_key.pem"))
+            ansible_server = AnsibleApi(inventory_path=host_file, default_ssh_username="root",default_ssh_password=None, private_key_file=os.path.join(ansible_dir, "private_key.pem"),)
         else:
-            ansible_server = AnsibleApi(inventory_path=hostfile, default_username="root", password=cluster.node_config[0].password)
-        ansible_server.run_playbook([os.path.join()])
+            #初始化一个AnsibleApi类型的对象
+            ansible_server = AnsibleApi(inventory_path=host_file, default_ssh_username="root", default_ssh_password=cluster.node_config[0].password, default_key_file=None,verbosity=0 )
+        ansible_server.run_playbook([playbook_file])
         res = wait_for_ansible_result(ansible_server)
         return  res
     except subprocess.CalledProcessError as e:
@@ -206,7 +208,7 @@ def create_cluster(cluster_tf_dict,cluster_dict):
         task_id = current_task.request.id
         
         cluster_tfvars = ClusterTFVarsObject(**cluster_tf_dict)
-        cluster = ClusterTFVarsObject(**cluster_dict)
+        cluster = ClusterObject(**cluster_dict)
         # 1. 使用Terraform创建基础设施
         terraform_result = create_infrastructure(cluster_tfvars)
         
@@ -220,21 +222,21 @@ def create_cluster(cluster_tf_dict,cluster_dict):
         host_file = os.path.join(WORK_DIR, "ansible-deploy", "inventory", str(cluster.id), "hosts")
         res = subprocess.run(["python3", host_file, "--list"], capture_output=True, text=True)
         if res.returncode != 0:
+            #更新数据库的状态为failed
             raise Exception("Error generating Ansible inventory")
-        aaa = res.stdout
-        # Convert JSON output to Python object
-        inventory_json = json.loads(res.stdout)
-        
-        # Convert Python object to YAML
-        inventory_yaml = yaml.dump(inventory_json, default_flow_style=False)
-        
-        inventory_file = os.path.join(WORK_DIR, "ansible-deploy", "inventory", str(cluster.id), "inventory.yaml")
-        with open(inventory_file, "w") as f:
-            f.write(inventory_yaml)
+        hosts = res.stdout
+        # todo 添加节点时，需要将节点信息写入到inventory/inventory.yaml文件中
+        # 如果是密码登录与master节点1做免密
+        hosts_data = json.loads(hosts)
+        # 从_meta.hostvars中获取master节点的IP
+        master_node_name = cluster_tfvars.cluster_name+"-k8s-master1"
+        master_ip = hosts_data["_meta"]["hostvars"][master_node_name]["access_ip_v4"]
+        cmd = f'sshpass -p "{cluster_tfvars.password}" ssh-copy-id -o StrictHostKeyChecking=no {cluster_tfvars.ssh_user}@{master_ip}'
+        result = subprocess.run(cmd, shell=True, capture_output=True)
         # 执行ansible命令验证是否能够连接到所有节点
         res = subprocess.run([
             "ansible",
-            "-i", "inventory/hosts.yaml",
+            "-i", host_file,
             "-m", "ping",
             "all"
         ], capture_output=True)

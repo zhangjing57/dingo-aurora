@@ -42,7 +42,7 @@ mounts:
 ssh_pwauth: yes
 chpasswd:
   list: |
-    root:${password}
+    ${ssh_user}:${password}
   expire: False
 %{~ endif }
 ## in some cases direct root ssh access via ssh key is required

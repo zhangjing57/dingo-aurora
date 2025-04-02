@@ -87,6 +87,7 @@ class ClusterTFVarsObject(BaseModel):
     bus_network_id: Optional[str] = Field(None, description="业务网络id")
     admin_network_id: Optional[str] = Field(None, description="管理网id")
     bus_subnet_id: Optional[str] = Field(None, description="业务子网id")
+    ssh_user: Optional[str] = Field(None, description="用户名")
     password: Optional[str] = Field(None, description="密码")
     floatingip_pool: Optional[str] = Field(None, description="浮动ip池")
     subnet_cidr: Optional[str] = Field(None, description="运行时类型")

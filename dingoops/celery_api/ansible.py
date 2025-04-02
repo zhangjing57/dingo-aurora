@@ -201,7 +201,8 @@ class AnsibleApi(object):
         self.variable_manager = VariableManager(loader=self.loader, inventory=self.inventory)
 
     def __set_extra_vars(self):
-        self.variable_manager.extra_vars = self.args.copy()
+        aaa = self.args.copy()
+        self.variable_manager.extra_vars = aaa
 
     def set_extra_vars(self,vars):
         if not vars :
@@ -230,7 +231,7 @@ class AnsibleApi(object):
         self.__set_variable_manager()
         self.__set_options()
         self.__set_default_password()
-        self.__set_extra_vars()
+        self.set_extra_vars(self.args)
 
     def run_ansible(self, task_list, host_ips=None):
         if host_ips is None:
@@ -266,12 +267,11 @@ class AnsibleApi(object):
     def run_playbook(self, playbook_path, ip=None, **kwargs):
         #print('self_ips_run_playbook:',self.ips)
         # self.variable_manager.extra_vars = {'ansible_ssh_pass': self.default_password, 'disabled': 'yes'}
-        self.variable_manager.extra_vars = self.args
+        #self.variable_manager.extra_vars = self.args
         playbook = PlaybookExecutor(playbooks=playbook_path,
                                     inventory=self.inventory,
                                     variable_manager=self.variable_manager,
                                     loader=self.loader,
-                                    options=self.options,
                                     passwords=self.password)
         playbook._tqm._stdout_callback = self.play_callback
 

@@ -21,7 +21,7 @@ class TestCreateCluster(unittest.TestCase):
       'bus_network_id': 'f0f21356-858d-4c1e-b58b-71238bc3c23c',
       'bus_subnet_id': '438b7357-6a9a-4d93-993d-f73ce2a5d803',
       'auth_type': 'key', 
-      'user': 'root', 
+      'ssh_user': 'root', 
       'password': 'daz3502',
       'use_existing_network': True,
       'external_net': 'a88e60f1-6bd1-4846-8b96-cbd309c1ebd4',
@@ -45,9 +45,9 @@ class TestCreateCluster(unittest.TestCase):
       'name': 'dsy-cluster',
       'node_config': [
         {'role': 'master', 'type': 'vm', 'flavor': '1', 'count': 1, 
-         'image': 'ubuntu-2204-dsy', 'auth_type': 'key', 'user': 'root', 'password': 'daz3502'},
+         'image': 'ubuntu-2204-dsy', 'auth_type': 'password', 'user': 'root', 'password': 'daz3502'},
         {'role': 'worker', 'type': 'vm', 'flavor': '1', 'count': 2, 
-         'image': 'ubuntu-2204-dsy', 'auth_type': 'key', 'user': 'root', 'password': 'daz3502'},
+         'image': 'ubuntu-2204-dsy', 'auth_type': 'password', 'user': 'root', 'password': 'daz3502'},
       ],
       'network_config': {
         'admin_network_id': '4700f790-0a34-4ca2-a53d-f1438568f8ff',
