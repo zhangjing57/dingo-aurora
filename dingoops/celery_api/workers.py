@@ -7,7 +7,7 @@ import time
 from typing import Any, Dict, Optional
 from celery import Celery
 from dingoops.api.model.cluster import ClusterObject
-from dingoops.celery_api.ansible import AnsibleApi
+from dingoops.celery_api.ansible import run_playbook
 from dingoops.db.models.cluster.models import Cluster
 from pydantic import BaseModel, Field
 from fastapi import Path
@@ -97,37 +97,37 @@ def create_infrastructure(cluster:ClusterTFVarsObject):
         print(f"Terraform error: {e}")
         return False
 
-def wait_for_ansible_result(ansible_client: AnsibleApi, task_id: str, timeout: int = 3600, interval: int = 5) -> Optional[Dict[str, Any]]:
+# def wait_for_ansible_result(task_id: str, timeout: int = 3600, interval: int = 5) -> Optional[Dict[str, Any]]:
 
-    start_time = time.time()
-    logging.info(f"等待Ansible任务 {task_id} 完成...")
+#     start_time = time.time()
+#     logging.info(f"等待Ansible任务 {task_id} 完成...")
     
-    while True:
-        # 检查是否超时
-        if time.time() - start_time > timeout:
-            logging.error(f"等待Ansible任务 {task_id} 结果超时")
-            return None
+#     while True:
+#         # 检查是否超时
+#         if time.time() - start_time > timeout:
+#             logging.error(f"等待Ansible任务 {task_id} 结果超时")
+#             return None
         
-        try:
-            # 获取任务结果
-            result = ansible_client.get_playbook_result(task_id)
+#         try:
+#             # 获取任务结果
+#             result = ansible_client.get_playbook_result(task_id)
             
-            # 检查任务是否完成且成功
-            if result and result.get('status') == 'SUCCESS':
-                logging.info(f"Ansible任务 {task_id} 执行成功")
-                return result
-            elif result and result.get('status') in ['FAILED', 'ERROR']:
-                logging.error(f"Ansible任务 {task_id} 执行失败: {result}")
-                return None
+#             # 检查任务是否完成且成功
+#             if result and result.get('status') == 'SUCCESS':
+#                 logging.info(f"Ansible任务 {task_id} 执行成功")
+#                 return result
+#             elif result and result.get('status') in ['FAILED', 'ERROR']:
+#                 logging.error(f"Ansible任务 {task_id} 执行失败: {result}")
+#                 return None
                 
-            # 任务仍在运行，继续等待
-            logging.debug(f"Ansible任务 {task_id} 仍在执行中，继续等待...")
+#             # 任务仍在运行，继续等待
+#             logging.debug(f"Ansible任务 {task_id} 仍在执行中，继续等待...")
             
-        except Exception as e:
-            logging.warning(f"获取Ansible任务 {task_id} 结果时出错: {str(e)}，将继续尝试")
+#         except Exception as e:
+#             logging.warning(f"获取Ansible任务 {task_id} 结果时出错: {str(e)}，将继续尝试")
         
-        # 等待一段时间再次检查
-        time.sleep(interval)
+#         # 等待一段时间再次检查
+#         time.sleep(interval)
 
 def deploy_kubernetes(cluster:ClusterObject):
     """使用Ansible部署K8s集群"""
@@ -137,19 +137,8 @@ def deploy_kubernetes(cluster:ClusterObject):
         os.chdir(ansible_dir)
         host_file = os.path.join(WORK_DIR, "ansible-deploy", "inventory", str(cluster.id), "hosts")
         playbook_file  = os.path.join(WORK_DIR, "ansible-deploy", "cluster.yml")
-        ansible_server = {}
-        if cluster.node_config[0].auth_type == "key":
-            #创建private_key.pem文件
-            with open(os.path.join(ansible_dir, "private_key.pem"), "w") as f:
-                f.write(cluster.node_config[0].private_key)
+        run_playbook(playbook_file, host_file, ansible_dir)
 
-            ansible_server = AnsibleApi(inventory_path=host_file, default_ssh_username="root",default_ssh_password=None, private_key_file=os.path.join(ansible_dir, "private_key.pem"),)
-        else:
-            #初始化一个AnsibleApi类型的对象
-            ansible_server = AnsibleApi(inventory_path=host_file, default_ssh_username="root", default_ssh_password=cluster.node_config[0].password, default_key_file=None,verbosity=0 )
-        ansible_server.run_playbook([playbook_file])
-        res = wait_for_ansible_result(ansible_server)
-        return  res
     except subprocess.CalledProcessError as e:
         print(f"Ansible error: {e}")
         return False

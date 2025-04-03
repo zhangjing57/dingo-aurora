@@ -20,7 +20,7 @@
   check_mode: false
 
 - name: Add http_proxy to /etc/apt/apt.conf if http_proxy is defined
-  raw: echo 'Acquire::http::proxy http://"{{ http_proxy }}";' >> /etc/apt/apt.conf
+  raw: echo 'Acquire::http::proxy "{{ http_proxy }}";' >> /etc/apt/apt.conf
   become: true
   when:
     - http_proxy is defined
@@ -36,7 +36,7 @@
   check_mode: false
 
 - name: Add https_proxy to /etc/apt/apt.conf if https_proxy is defined
-  raw: echo 'Acquire::https::proxy https://"{{ https_proxy }}";' >> /etc/apt/apt.conf
+  raw: echo 'Acquire::https::proxy "{{ https_proxy }}";' >> /etc/apt/apt.conf
   become: true
   when:
     - https_proxy is defined
