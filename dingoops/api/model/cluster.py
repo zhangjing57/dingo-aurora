@@ -2,7 +2,7 @@
 from typing import Dict, Optional, List
 
 from pydantic import BaseModel, Field
-from api.model.base import DingoopsObject
+from dingoops.api.model.base import DingoopsObject
 
 
 class NetworkConfigObject(BaseModel):
@@ -39,6 +39,18 @@ class NodeGroup(BaseModel):
     etcd: Optional[bool] = Field(None, description="是否是etcd节点")
     
 class ClusterObject(DingoopsObject):
+    project_id: Optional[str] = Field(None, description="项目id")
+    user_id: Optional[str] = Field(None, description="用户id")
+    labels: Optional[str] = Field(None, description="集群标签")
+    region_name: Optional[str] = Field(None, description="region名称")
+    network_config: Optional[NetworkConfigObject] = Field(None, description="网络配置")
+    node_config: Optional[List[NodeConfigObject]] = Field(None, description="节点配置")
+    runtime: Optional[str] = Field(None, description="运行时类型")
+    type: Optional[str] = Field(None, description="集群类型")
+    version: Optional[str] = Field(None, description="k8s版本")
+    kube_config: Optional[str] = Field(None, description="cni插件")
+    
+class ClusterInfo(DingoopsObject):
     project_id: Optional[str] = Field(None, description="项目id")
     user_id: Optional[str] = Field(None, description="用户id")
     labels: Optional[str] = Field(None, description="集群标签")

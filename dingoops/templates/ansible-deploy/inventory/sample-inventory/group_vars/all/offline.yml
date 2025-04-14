@@ -1,7 +1,7 @@
 ---
 ## Global Offline settings
 ### Private Container Image Registry
-# registry_host: "myprivateregisry.com"
+registry_host: "harbor.zetyun.cn/k8s"
 # files_repo: "http://myprivatehttpd"
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "http://myinternalyumrepo"
@@ -11,11 +11,11 @@
 # ubuntu_repo: "http://myinternalubunturepo"
 
 ## Container Registry overrides
-# kube_image_repo: "{{ registry_host }}"
-# gcr_image_repo: "{{ registry_host }}"
-# github_image_repo: "{{ registry_host }}"
-# docker_image_repo: "{{ registry_host }}"
-# quay_image_repo: "{{ registry_host }}"
+kube_image_repo: "{{ registry_host }}"
+gcr_image_repo: "{{ registry_host }}"
+github_image_repo: "{{ registry_host }}"
+docker_image_repo: "{{ registry_host }}"
+quay_image_repo: "{{ registry_host }}"
 
 ## Kubernetes components
 # kubeadm_download_url: "{{ files_repo }}/dl.k8s.io/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubeadm"

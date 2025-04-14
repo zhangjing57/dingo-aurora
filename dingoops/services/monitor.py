@@ -4,9 +4,9 @@ import uuid
 from math import ceil
 from oslo_log import log
 
-from db.models.monitor.models import MonitorUrlConfig
-from db.models.monitor.sql import MonitorSQL
-from services.custom_exception import Fail
+from dingoops.db.models.monitor.models import MonitorUrlConfig
+from dingoops.db.models.monitor.sql import MonitorSQL
+from dingoops.services.custom_exception import Fail
 
 LOG = log.getLogger(__name__)
 

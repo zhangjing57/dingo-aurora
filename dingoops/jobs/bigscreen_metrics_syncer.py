@@ -1,13 +1,13 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pymemcache.client.base import Client
 from apscheduler.schedulers.background import BackgroundScheduler
-from services.bigscreens import BigScreensService
-from services.bigscreenshovel import BigScreenShovelService
-from jobs import CONF
+from dingoops.services.bigscreens import BigScreensService
+from dingoops.services.bigscreenshovel import BigScreenShovelService
+from dingoops.jobs import CONF
 from datetime import datetime, timedelta
 import time
 
-from services.syn_bigscreens import BigScreenSyncService
+from dingoops.services.syn_bigscreens import BigScreenSyncService
 
 scheduler = BackgroundScheduler()
 blocking_scheduler = BlockingScheduler()

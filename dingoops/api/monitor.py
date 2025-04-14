@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Query, HTTPException
 from oslo_log import log
 
-from api.model.monitor import MonitorUrlConfigApiModel
-from services.custom_exception import Fail
-from services.monitor import MonitorService
+from dingoops.api.model.monitor import MonitorUrlConfigApiModel
+from dingoops.services.custom_exception import Fail
+from dingoops.services.monitor import MonitorService
 
 # 日志
 LOG = log.getLogger(__name__)

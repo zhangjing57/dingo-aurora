@@ -5,8 +5,8 @@ from math import ceil
 
 from oslo_log import log
 
-from db.models.system.models import OperateLog
-from db.models.system.sql import SystemSQL
+from dingoops.db.models.system.models import OperateLog
+from dingoops.db.models.system.sql import SystemSQL
 
 LOG = log.getLogger(__name__)
 

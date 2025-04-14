@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any
 from neutronclient.v2_0 import client as neutron_client
 from keystoneauth1 import loading
 from keystoneauth1 import session
-from services import CONF
+from dingoops.services import CONF
 
 class API:
     

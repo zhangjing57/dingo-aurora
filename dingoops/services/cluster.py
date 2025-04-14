@@ -13,17 +13,17 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.styles import Border, Side
 from typing_extensions import assert_type
 
-from celery_api.celery_app import celery_app
-from db.models.cluster.sql import ClusterSQL
+from dingoops.celery_api.celery_app import celery_app
+from dingoops.db.models.cluster.sql import ClusterSQL
 from math import ceil
 from oslo_log import log
 from dingoops.api.model.cluster import ClusterTFVarsObject, NodeGroup, ClusterObject
 from dingoops.db.models.cluster.models import Cluster as ClusterDB
 from dingoops.db.models.cluster.models import Nodeinfo as NodeDB
-from utils import neutron
+from dingoops.utils import neutron
 
-from services.custom_exception import Fail
-from services.system import SystemService
+from dingoops.services.custom_exception import Fail
+from dingoops.services.system import SystemService
 
 
 
@@ -76,80 +76,7 @@ class ClusterService:
         # 业务逻辑
         try:
             # 按照条件从数据库中查询数据
-            count, data = AssetSQL.list_asset(query_params, page, page_size, sort_keys, sort_dirs)
-            # 数据处理
-            ret = []
-            # 遍历
-            for r in data:
-                # 填充数据
-                temp = {}
-                temp["asset_id"] = r.id
-                temp["asset_type_id"] = r.asset_type_id
-                temp["asset_category"] = r.asset_category
-                temp["asset_type"] = r.asset_type
-                temp["asset_type_name_zh"] = r.asset_type_name_zh
-                temp["asset_name"] = r.name
-                temp["equipment_number"] = r.equipment_number
-                temp["sn_number"] = r.sn_number
-                temp["asset_number"] = r.asset_number
-                temp["asset_status"] = r.asset_status
-                temp["asset_status_description"] = r.asset_status_description
-                temp["asset_description"] = r.description
-                temp["extra"] = r.extra
-                temp["extend_column_extra"] = r.extend_column_extra
-                # 厂商信息
-                temp_manufacture = {}
-                temp_manufacture["id"] = r.manufacture_id
-                temp_manufacture["name"] = r.manufacture_name
-                temp_manufacture["description"] = r.manufacture_description
-                temp_manufacture["extra"] = r.manufacture_extra
-                temp["asset_manufacturer"] = temp_manufacture
-                # 位置信息
-                temp_position = {}
-                temp_position["id"] = r.position_id
-                temp_position["frame_position"] = r.position_frame_position
-                temp_position["cabinet_position"] = r.position_cabinet_position
-                temp_position["u_position"] = r.position_u_position
-                temp_position["description"] = r.position_description
-                temp["asset_position"] = temp_position
-                # 合同信息
-                temp_contract = {}
-                temp_contract["id"] = r.contract_id
-                temp_contract["contract_number"] = r.contract_number
-                temp_contract["purchase_date"] = None if r.contract_purchase_date is None else r.contract_purchase_date.timestamp() * 1000
-                temp_contract["batch_number"] = r.contract_batch_number
-                temp_contract["description"] = r.contract_description
-                temp["asset_contract"] = temp_contract
-                # 归属信息
-                temp_belong = {}
-                temp_belong["id"] = r.belong_id
-                temp_belong["department_id"] = r.belong_department_id
-                temp_belong["department_name"] = r.belong_department_name
-                temp_belong["user_id"] = r.belong_user_id
-                temp_belong["user_name"] = r.belong_user_name
-                temp_belong["tel_number"] = r.belong_tel_number
-                temp_belong["description"] = r.belong_contract_description
-                temp["asset_belong"] = temp_belong
-                # 租户信息
-                temp_cutomer = {}
-                temp_cutomer["id"] = r.customer_id
-                temp_cutomer["customer_id"] = r.customer_customer_id
-                temp_cutomer["customer_name"] = r.customer_customer_name
-                temp_cutomer["rental_duration"] = r.customer_rental_duration
-                temp_cutomer["start_date"] = None if r.customer_start_date is None else r.customer_start_date.timestamp() * 1000
-                temp_cutomer["end_date"] = None if r.customer_end_date is None else r.customer_end_date.timestamp() * 1000
-                temp_cutomer["vlan_id"] = r.customer_vlan_id
-                temp_cutomer["float_ip"] = r.customer_float_ip
-                temp_cutomer["band_width"] = r.customer_band_width
-                temp_cutomer["description"] = r.customer_description
-                temp["asset_customer"] = temp_cutomer
-                # 配件信息
-                temp["asset_part"] = self.list_assets_parts(r.id)
-                # 流量信息 列表上不需要
-                # temp["asset_flow"] = self.list_assets_flows(r.id)
-                # 加入列表
-                ret.append(temp)
-
+            count, data = ClusterSQL.list_cluster(query_params, page, page_size, sort_keys, sort_dirs)
             # 返回数据
             res = {}
             # 页数相关信息
@@ -158,17 +85,40 @@ class ClusterService:
                 res['pageSize'] = page_size
                 res['totalPages'] = ceil(count / int(page_size))
             res['total'] = count
-            res['data'] = ret
+            res['data'] = data
             return res
         except Exception as e:
             import traceback
             traceback.print_exc()
             return None
+        
+    
+    def get_cluster(self, cluster_id):
+        if not cluster_id:
+            return None
+        # 详情
+        try:
+            # 根据id查询
+            query_params = {}
+            query_params["id"] = cluster_id
+            res = self.list_clusters(query_params, 1, 10, None, None)
+            # 空
+            if not res or not res.get("data"):
+                return None
+            # 返回第一条数据
+            return res.get("data")[0]
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+
 
     def create_cluster(self, cluster: ClusterObject):
         # 数据校验 todo
         try:
             cluster_info_db = self.convert_clusterinfo_todb(cluster)
+            # 校验是否存在同名数据库
+            
             # 保存对象到数据库
             res = ClusterSQL.create_cluster(cluster_info_db)
             # 保存节点信息到数据库
@@ -214,8 +164,46 @@ class ClusterService:
         # 成功返回资产id
         return cluster_id
     
+
+    def delete_cluster(self, cluster_id):
+        if not cluster_id:
+            return None
+        # 详情
+        try:
+            # 更新集群状态为删除中
+            
+            # 根据id查询
+            query_params = {}
+            query_params["id"] = cluster_id
+            res = self.list_clusters(query_params, 1, 10, None, None)
+            # 空
+            if not res or not res.get("data"):
+                return None
+            # 返回第一条数据
+            cluster = res.get("data")[0]
+            cluster.status = "deleting"
+            # 保存对象到数据库
+            res = ClusterSQL.update_cluster(cluster)
+            # 调用celery_app项目下的work.py中的delete_cluster方法
+            result = celery_app.send_task("dingoops.celery_api.workers.delete_cluster", args=[cluster_id])
+            if result.get():
+                # 删除成功，更新数据库状态
+                cluster.status = "deleted"
+                res = ClusterSQL.update_cluster(cluster)
+            else:
+                # 删除失败，更新数据库状态
+                cluster.status = "delete_failed"
+                res = ClusterSQL.update_cluster(cluster)
+            return res.get("data")[0]
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise e
+    
     def convert_clusterinfo_todb(self, cluster:ClusterObject):
         cluster_info_db = ClusterDB()
+        cluster_info_db.master_count = 0
+        cluster_info_db.worker_count = 0
         cluster_info_db.id = str(uuid.uuid4())
         cluster_info_db.name = cluster.name
         cluster_info_db.project_id = cluster.project_id
@@ -223,7 +211,7 @@ class ClusterService:
         cluster_info_db.labels = json.dumps(cluster.labels)
         cluster_info_db.status = "creating"
         cluster_info_db.region_name = cluster.region_name
-        cluster_info_db.admin_network_id = cluster.network_config.network_id
+        cluster_info_db.admin_network_id = cluster.network_config.admin_network_id
         cluster_info_db.admin_subnet_id = cluster.network_config.admin_subnet_id
         cluster_info_db.bus_network_id = cluster.network_config.bus_network_id
         cluster_info_db.bus_subnet_id = cluster.network_config.bus_subnet_id
@@ -233,11 +221,19 @@ class ClusterService:
         cluster_info_db.bus_address = ""
         cluster_info_db.api_address = ""
         cluster_info_db.cni = cluster.network_config.cni
+        cluster_info_db.version = cluster.version
+        cluster_info_db.worker_count = 0
+        cluster_info_db.version = cluster.version
         cluster_info_db.kube_config = ""
         cluster_info_db.create_time = datetime.now()
         cluster_info_db.update_time = datetime.now()
         cluster_info_db.description = cluster.description
         cluster_info_db.extra = cluster.extra
+        for node_conf in cluster.node_config:
+            if node_conf.role == "master":
+                cluster_info_db.master_count += node_conf.count
+            if node_conf.role == "worker":
+                cluster_info_db.worker_count += node_conf.count
         return cluster_info_db
     def convert_nodeinfo_todb(self, cluster:ClusterObject):
         nodeinfo_list = []

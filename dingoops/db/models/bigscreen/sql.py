@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from typing_extensions import assert_type
 
-from db.engines.mysql import get_session
-from db.models.bigscreen.models import BigscreenMetricsConfig, BigscreenMetrics
+from dingoops.db.engines.mysql import get_session
+from dingoops.db.models.bigscreen.models import BigscreenMetricsConfig, BigscreenMetrics
 
 from datetime import datetime
 from enum import Enum

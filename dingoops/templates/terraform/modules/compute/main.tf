@@ -54,6 +54,7 @@ locals {
     for name, node in var.k8s_nodes :
       name => {
         "key_pair"       = var.key_pair,
+        "password"       = var.password,
         "use_local_disk" = (node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.node_root_volume_size_in_gb) == 0,
         "image_id"       = node.image_id != null ? node.image_id : local.image_to_use_node,
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.node_root_volume_size_in_gb,
@@ -68,6 +69,7 @@ locals {
     for name, node in var.k8s_masters :
       name => {
         "key_pair"       = var.key_pair,
+        "password"       = var.password,
         "use_local_disk" = (node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.master_root_volume_size_in_gb) == 0,
         "image_id"       = node.image_id != null ? node.image_id : local.image_to_use_master,
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.master_root_volume_size_in_gb,
@@ -406,7 +408,7 @@ resource "openstack_compute_instance_v2" "k8s_masters" {
     openstack_networking_trunk_v2.trunk_masters
   ]
   provisioner "local-exec" {
-    command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ${path.module}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_masters_fips : value.address]), 0)}/ > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
+    command = "%{if each.value.floating_ip} %{if var.password == ""}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml  %{else} sed -e s/PASSWORD/${var.password}/ -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template_pass.txt > ${var.group_vars_path}/no_floating.yml%{endif}%{else}true%{endif}"  
   }
 }
 
@@ -502,7 +504,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
     openstack_networking_trunk_v2.trunk_nodes
   ]
   provisioner "local-exec" {
-    command = "%{if each.value.floating_ip}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
+    command = "%{if each.value.floating_ip} %{if var.password == ""}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml  %{else} sed -e s/PASSWORD/${var.password}/ -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template_pass.txt > ${var.group_vars_path}/no_floating.yml%{endif}%{else}true%{endif}"
   }
 }
 resource "openstack_networking_floatingip_associate_v2" "k8s_masters" {

@@ -23,14 +23,14 @@ from oslo_log import log
 
 from dingoops.services.custom_exception import Fail
 from dingoops.services.system import SystemService
-from utils.common import format_excel_str
-from utils.constant import ASSET_SERVER_TEMPLATE_FILE_DIR, asset_equipment_columns, asset_basic_info_columns, \
+from dingoops.utils.common import format_excel_str
+from dingoops.utils.constant import ASSET_SERVER_TEMPLATE_FILE_DIR, asset_equipment_columns, asset_basic_info_columns, \
     asset_manufacture_info_columns, asset_position_info_columns, asset_contract_info_columns, asset_belong_info_columns, \
     asset_customer_info_columns, asset_part_info_columns, asset_network_basic_info_columns, \
     asset_network_manufacture_info_columns, asset_network_position_info_columns, asset_network_basic_info_extra_columns, \
     ASSET_NETWORK_TEMPLATE_FILE_DIR, ASSET_NETWORK_FLOW_TEMPLATE_FILE_DIR, asset_network_flow_info_columns, \
     asset_basic_info_extra_columns
-from utils.datetime import change_excel_date_to_timestamp
+from dingoops.utils.datetime import change_excel_date_to_timestamp
 
 LOG = log.getLogger(__name__)
 

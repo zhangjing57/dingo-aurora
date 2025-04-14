@@ -11,8 +11,8 @@ class TestCreateCluster(unittest.TestCase):
   def setUp(self):
     # Setup test data
     self.cluster_tf_dict = {
-      'id': 'test-123',
-      'cluster_name': 'dsy-cluster',
+      'id': '6659b410-1a8f-4862-a646-32d8845612d0',
+      'cluster_name': 'dsy2',
       'image': 'ubuntu-2204-dsy',
       'k8s_masters': {'master1': {'flavor': '1', 'etcd': True, 'floating_ip': True,'user': 'root', 'password': 'daz3502'}},
       'k8s_nodes': {'worker1': {'flavor': '1','floating_ip': False,'etcd': False,'user': 'root', 'password': 'daz3502'}, 'worker2': {'flavor': '1','floating_ip': True,'etcd': False,'user': 'root', 'password': 'daz3502'}},
@@ -41,22 +41,43 @@ class TestCreateCluster(unittest.TestCase):
     }
     
     self.cluster_dict = {
-      'id': 'test-123',
-      'name': 'dsy-cluster',
-      'node_config': [
-        {'role': 'master', 'type': 'vm', 'flavor': '1', 'count': 1, 
-         'image': 'ubuntu-2204-dsy', 'auth_type': 'password', 'user': 'root', 'password': 'daz3502'},
-        {'role': 'worker', 'type': 'vm', 'flavor': '1', 'count': 2, 
-         'image': 'ubuntu-2204-dsy', 'auth_type': 'password', 'user': 'root', 'password': 'daz3502'},
-      ],
-      'network_config': {
-        'admin_network_id': '4700f790-0a34-4ca2-a53d-f1438568f8ff',
-        'svc_cidr': '10.0.0.0/24',
-        'router_id': 'router-123',
-        'admin_subnet_id': 'c8b2c4df-7745-4028-acbd-333bc450a5be',
-        'bus_network_id': 'f0f21356-858d-4c1e-b58b-71238bc3c23c',
-        'bus_subnet_id': '438b7357-6a9a-4d93-993d-f73ce2a5d803'
-      }
+    "name": "dsy1",
+    "description": "dedadasdasd",
+    "region_name": "regionOne",
+    "network_config": {
+        "cni": "calico",
+        "pod_cidr": "10.0.0.0/24",
+        "admin_subnet_id": "c8b2c4df-7745-4028-acbd-333bc450a5be",
+        "bus_subnet_id": "438b7357-6a9a-4d93-993d-f73ce2a5d803",
+        "admin_network_id": "4700f790-0a34-4ca2-a53d-f1438568f8ff",
+        "bus_network_id": "f0f21356-858d-4c1e-b58b-71238bc3c23c",
+        "service_cidr": "10.233.0.0/18"
+    },
+    "node_config": [
+        {
+            "count": 1,
+            "image": "ubuntu-2204-dsy",
+            "flavor_id": "1",
+            "password": "daz3502",
+            "auth_type": "password",
+            "role": "master",
+            "type": "vm"
+        },
+        {
+            "count": 2,
+            "image": "ubuntu-2204-dsy",
+            "flavor_id": "1",
+            "user": "root",
+            "password": "daz3502",
+            "auth_type": "pass",
+            "role": "worker",
+            "type": "vm"
+        }
+    ],
+    "runtime": "containerd",
+    "type": "1",
+    "version": "1.31",
+    "cni": "calico"
     }
 
 

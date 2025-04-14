@@ -1,7 +1,7 @@
 # 大屏的api接口
 from fastapi import APIRouter, Query
 
-from services.bigscreens import BigScreensService
+from dingoops.services.bigscreens import BigScreensService
 
 router = APIRouter()
 

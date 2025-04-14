@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -ex
 
+# start celery worker
+
+celery -A dingoops.celery_api.workers worker --loglevel=info
+
+
 # kolla_set_configs
 echo "/usr/local/bin/gunicorn -c /etc/dingoops/gunicorn.py main:app" >/run_command
 

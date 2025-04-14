@@ -5,11 +5,11 @@ import uuid
 
 import requests
 from pymemcache.client.base import Client
-from jobs import CONF
+from dingoops.jobs import CONF
 
-from db.models.bigscreen.models import BigscreenMetricsConfig, BigscreenMetrics
-from db.models.bigscreen.sql import BigscreenSQL
-from utils import datetime
+from dingoops.db.models.bigscreen.models import BigscreenMetricsConfig, BigscreenMetrics
+from dingoops.db.models.bigscreen.sql import BigscreenSQL
+from dingoops.utils import datetime
 
 prometheus_query_url = CONF.bigscreen.prometheus_query_url
 region_name = CONF.DEFAULT.region_name

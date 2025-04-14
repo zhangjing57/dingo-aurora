@@ -8,8 +8,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends apt-utils \
     gcc traceroute lsof iputils-ping vim wget curl locales-all\
     python3-pip cmake build-essential python3-dev libxml2-dev
 
-COPY . /opt/dingoops
-
+COPY ./dingoops /opt/dingoops
+COPY ./requirements.txt /opt/dingoops/requirements.txt
 RUN pip install -r /opt/dingoops/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN apt-get clean \
@@ -21,6 +21,6 @@ COPY ./etc/gunicorn.py /etc/dingoops/gunicorn.py
 COPY ./docker/start_service.sh /usr/local/bin/start_service.sh
 RUN chmod +x /usr/local/bin/start_service.sh
 WORKDIR /opt/dingoops
-EXPOSE 8889
+EXPOSE 8887
 
 CMD ["start_service.sh"]
