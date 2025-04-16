@@ -17,3 +17,6 @@ output "router_internal_port_id" {
 output "subnet_id" {
   value = element(concat(openstack_networking_subnet_v2.k8s.*.id, [""]), 0)
 }
+output "admin_subnet_id" {
+  value = element(concat(data.openstack_networking_subnet_v2.admin_k8s_output.*.id, [""]), 0)
+}

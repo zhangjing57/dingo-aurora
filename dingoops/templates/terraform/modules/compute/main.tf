@@ -28,12 +28,12 @@ data "cloudinit_config" "cloudinit" {
 }
 
 data "openstack_networking_network_v2" "k8s_admin_network" {
-  count = var.use_existing_network ? 1 : 0
+  count = var.use_existing_network != null ? 1 : 0
   network_id  = var.admin_network_id
 }
 
 data "openstack_networking_network_v2" "bus_k8s_network" {
-  count = var.use_existing_network ? 1 : 0
+  count = var.use_existing_network && var.bus_network_id != "" ? 1 : 0
   network_id  = var.bus_network_id
 }
 
@@ -60,7 +60,7 @@ locals {
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.node_root_volume_size_in_gb,
         "volume_type"    = node.volume_type != null ? node.volume_type : var.node_volume_type,
         "admin_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network ? data.openstack_networking_network_v2.k8s_admin_network[0].id : var.admin_network_id)
-        "bus_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network ? data.openstack_networking_network_v2.bus_k8s_network[0].id : var.bus_network_id)
+        "bus_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network && var.bus_network_id != "" ? data.openstack_networking_network_v2.bus_k8s_network[0].id : var.bus_network_id)
         #"server_group"   = node.server_group != null ? [openstack_compute_servergroup_v2.k8s_node_additional[node.server_group].id] : (var.node_server_group_policy != ""  ? [openstack_compute_servergroup_v2.k8s_node[0].id] : [])
       }
   }
@@ -75,16 +75,16 @@ locals {
         "volume_size"    = node.root_volume_size_in_gb != null ? node.root_volume_size_in_gb : var.master_root_volume_size_in_gb,
         "volume_type"    = node.volume_type != null ? node.volume_type : var.master_volume_type,
         "admin_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network ? data.openstack_networking_network_v2.k8s_admin_network[0].id : var.admin_network_id)
-        "bus_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network ? data.openstack_networking_network_v2.bus_k8s_network[0].id : var.bus_network_id)
+        "bus_network_id"     = node.network_id != null ? node.network_id : (var.use_existing_network && var.bus_network_id != "" ? data.openstack_networking_network_v2.bus_k8s_network[0].id : var.bus_network_id)
       }
   }
 }
 locals {
-  #将segments集合转换为列表
-  segments_list = [for s in data.openstack_networking_network_v2.bus_k8s_network[0].segments : s]
-  # 获取第一个segment(如果存在)
+  # Only process segments if using existing network and bus_network_id is provided
+  segments_list = var.use_existing_network && var.bus_network_id != "" ? [for s in data.openstack_networking_network_v2.bus_k8s_network[0].segments : s] : []
+  # Get first segment (if exists)
   first_segment = length(local.segments_list) > 0 ? local.segments_list[0] : null
-  # 提供默认值以防止null
+  # Provide default values to prevent null
   segmentation_id = local.first_segment != null ? local.first_segment.segmentation_id : "1000"
   network_type = local.first_segment != null ? local.first_segment.network_type : "vlan"
 }
@@ -338,7 +338,7 @@ resource "openstack_networking_port_v2" "k8s_masters_admin_port" {
   ]
 }
 resource "openstack_networking_port_v2" "k8s_masters_bus_port" {
-  for_each              = var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? var.k8s_masters : {}
+  for_each              = var.bus_network_id != "" && var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? var.k8s_masters : {}
   name                  = "${var.cluster_name}-k8s-${each.key}"
   network_id            = local.k8s_masters_settings[each.key].bus_network_id
   admin_state_up        = "true"
@@ -359,7 +359,7 @@ resource "openstack_networking_port_v2" "k8s_masters_bus_port" {
 }
 
 resource "openstack_networking_trunk_v2" "trunk_masters" {
-  for_each       = var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? var.k8s_masters : {}
+  for_each       = var.bus_network_id != "" && var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? var.k8s_masters : {}
   name           = "${var.cluster_name}-k8s-${each.key}"
   admin_state_up = "true"
   port_id        = openstack_networking_port_v2.k8s_masters_admin_port[each.key].id
@@ -434,7 +434,7 @@ resource "openstack_networking_port_v2" "k8s_nodes_admin_port" {
   ]
 }
 resource "openstack_networking_port_v2" "k8s_nodes_bus_port" {
-  for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
+  for_each              = var.bus_network_id != "" && var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name                  = "${var.cluster_name}-k8s-${each.key}"
   network_id            = local.k8s_nodes_settings[each.key].bus_network_id
   admin_state_up        = "true"
@@ -455,7 +455,7 @@ resource "openstack_networking_port_v2" "k8s_nodes_bus_port" {
 }
 
 resource "openstack_networking_trunk_v2" "trunk_nodes" {
-  for_each       = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
+  for_each       =  var.bus_network_id != "" && var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name           = "${var.cluster_name}-k8s-${each.key}"
   admin_state_up = "true"
   port_id        = openstack_networking_port_v2.k8s_nodes_admin_port[each.key].id

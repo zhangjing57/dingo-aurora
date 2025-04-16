@@ -150,7 +150,8 @@ class ClusterService:
                 external_net=external_net[0]['id'],
                 use_existing_network=True,
                 group_vars_path="group_vars",
-                password=cluster.node_config[0].password
+                password=cluster.node_config[0].password,
+                k8s_master_loadbalancer_enabled=cluster.loadbalancer_enabled
                 )
                 #调用celery_app项目下的work.py中的create_cluster方法
             result = celery_app.send_task("dingoops.celery_api.workers.create_cluster", args=[tfvars.dict(),cluster.dict()])

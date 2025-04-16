@@ -3,29 +3,100 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 import subprocess
 import time
-from celery_api.workers import create_infrastructure, create_cluster, ClusterTFVarsObject
+from celery_api.workers import create_infrastructure, create_cluster, ClusterTFVarsObject,delete_cluster
 from api.model.cluster import ClusterObject, NodeConfigObject, NetworkConfigObject
 
 
 class TestCreateCluster(unittest.TestCase):
   def setUp(self):
     # Setup test data
+    # self.cluster_tf_dict = {
+    #   'id': 'fsdfds410-1a8f-4862-a646-32d8845612f4',
+    #   'cluster_name': 'dsy3',
+    #   'image': 'ubuntu-2204-dsy',
+    #   'k8s_masters': {'master1': {'flavor': '1', 'etcd': True, 'floating_ip': True,'user': 'root', 'password': 'daz3502'}},
+    #   'k8s_nodes': {'worker1': {'flavor': '1','floating_ip': False,'etcd': False,'user': 'root', 'password': 'daz3502'}, 'worker2': {'flavor': '1','floating_ip': True,'etcd': False,'user': 'root', 'password': 'daz3502'}},
+    #   'admin_subnet_id': 'c8b2c4df-7745-4028-acbd-333bc450a5be',
+    #   'admin_network_id': '4700f790-0a34-4ca2-a53d-f1438568f8ff',
+    #   'bus_network_id': 'f0f21356-858d-4c1e-b58b-71238bc3c23c',
+    #   'bus_subnet_id': '438b7357-6a9a-4d93-993d-f73ce2a5d803',
+    #   'auth_type': 'key', 
+    #   'ssh_user': 'root', 
+    #   'password': 'daz3502',
+    #   'use_existing_network': True,
+    #   'external_net': 'a88e60f1-6bd1-4846-8b96-cbd309c1ebd4',
+    #   'floatingip_pool': 'physnet2',
+    #   "loadbalancer_enabled": True,
+    #   "number_of_etcd": 0,
+
+    #   "number_of_k8s_masters": 0,
+
+    #   "number_of_k8s_masters_no_etcd": 0,
+
+    #   "number_of_k8s_masters_no_floating_ip": 0,
+
+    #   "number_of_k8s_masters_no_floating_ip_no_etcd": 0,
+    #   "number_of_k8s_nodes": 0,
+
+    #   "number_of_k8s_nodes_no_floating_ip": 0
+    # }
+    
+    # self.cluster_dict = {
+    # "name": "dsy1",
+    # "description": "dedadasdasd",
+    # "region_name": "regionOne",
+    # "network_config": {
+    #     "cni": "calico",
+    #     "pod_cidr": "10.0.0.0/24",
+    #     "admin_subnet_id": "c8b2c4df-7745-4028-acbd-333bc450a5be",
+    #     "bus_subnet_id": "438b7357-6a9a-4d93-993d-f73ce2a5d803",
+    #     "admin_network_id": "4700f790-0a34-4ca2-a53d-f1438568f8ff",
+    #     "bus_network_id": "f0f21356-858d-4c1e-b58b-71238bc3c23c",
+    #     "service_cidr": "10.233.0.0/18"
+    # },
+    # "node_config": [
+    #     {
+    #         "count": 1,
+    #         "image": "ubuntu-2204-dsy",
+    #         "flavor_id": "1",
+    #         "password": "daz3502",
+    #         "auth_type": "password",
+    #         "role": "master",
+    #         "type": "vm"
+    #     },
+    #     {
+    #         "count": 2,
+    #         "image": "ubuntu-2204-dsy",
+    #         "flavor_id": "1",
+    #         "user": "root",
+    #         "password": "daz3502",
+    #         "auth_type": "pass",
+    #         "role": "worker",
+    #         "type": "vm"
+    #     }
+    # ],
+    # "runtime": "containerd",
+    # "type": "1",
+    # "version": "v1.32.0",
+    # "cni": "calico"
+    # }
     self.cluster_tf_dict = {
-      'id': '6659b410-1a8f-4862-a646-32d8845612d0',
-      'cluster_name': 'dsy2',
-      'image': 'ubuntu-2204-dsy',
-      'k8s_masters': {'master1': {'flavor': '1', 'etcd': True, 'floating_ip': True,'user': 'root', 'password': 'daz3502'}},
-      'k8s_nodes': {'worker1': {'flavor': '1','floating_ip': False,'etcd': False,'user': 'root', 'password': 'daz3502'}, 'worker2': {'flavor': '1','floating_ip': True,'etcd': False,'user': 'root', 'password': 'daz3502'}},
-      'admin_subnet_id': 'c8b2c4df-7745-4028-acbd-333bc450a5be',
-      'admin_network_id': '4700f790-0a34-4ca2-a53d-f1438568f8ff',
-      'bus_network_id': 'f0f21356-858d-4c1e-b58b-71238bc3c23c',
-      'bus_subnet_id': '438b7357-6a9a-4d93-993d-f73ce2a5d803',
+      'id': 'dsl986410-1a8f-4862-a646-32d8845612f4',
+      'cluster_name': 'dsy',
+      'image': 'ubuntu2204-dsy',
+      'k8s_masters': {'master1': {'flavor': 'a0ee8641-fcb0-486e-9251-db9a4cf81225', 'etcd': True, 'floating_ip': True,'user': 'root', 'password': 'daz3502'}},
+      'k8s_nodes': {'worker1': {'flavor': 'a0ee8641-fcb0-486e-9251-db9a4cf81225','floating_ip': False,'etcd': False,'user': 'root', 'password': 'daz3502'}, 'worker2': {'flavor': 'a0ee8641-fcb0-486e-9251-db9a4cf81225','floating_ip': False,'etcd': False,'user': 'root', 'password': 'daz3502'}},
+      'admin_subnet_id': 'a5d2a291-429f-4e8c-8665-3cbaaa643b70',
+      'admin_network_id': 'a87fca1a-d0fe-42fe-99c9-15e396ab8539',
+      'bus_network_id': '',
+      'bus_subnet_id': '',
       'auth_type': 'key', 
       'ssh_user': 'root', 
       'password': 'daz3502',
       'use_existing_network': True,
-      'external_net': 'a88e60f1-6bd1-4846-8b96-cbd309c1ebd4',
-      'floatingip_pool': 'physnet2',
+      'external_net': 'd3e17b8a-80d3-4375-9148-615a50240005',
+      'floatingip_pool': 'physnet1-vlan806',
+      "k8s_master_loadbalancer_enabled": True,
       "number_of_etcd": 0,
 
       "number_of_k8s_masters": 0,
@@ -41,23 +112,23 @@ class TestCreateCluster(unittest.TestCase):
     }
     
     self.cluster_dict = {
-    "name": "dsy1",
+    "name": "dsy",
     "description": "dedadasdasd",
     "region_name": "regionOne",
     "network_config": {
         "cni": "calico",
         "pod_cidr": "10.0.0.0/24",
-        "admin_subnet_id": "c8b2c4df-7745-4028-acbd-333bc450a5be",
-        "bus_subnet_id": "438b7357-6a9a-4d93-993d-f73ce2a5d803",
-        "admin_network_id": "4700f790-0a34-4ca2-a53d-f1438568f8ff",
-        "bus_network_id": "f0f21356-858d-4c1e-b58b-71238bc3c23c",
+        "admin_subnet_id": "a0ee8641-fcb0-486e-9251-db9a4cf81225",
+        "bus_subnet_id": "",
+        "admin_network_id": "a0ee8641-fcb0-486e-9251-db9a4cf81225",
+        "bus_network_id": "",
         "service_cidr": "10.233.0.0/18"
     },
     "node_config": [
         {
             "count": 1,
-            "image": "ubuntu-2204-dsy",
-            "flavor_id": "1",
+            "image": "ubuntu2204-dsy",
+            "flavor_id": "a0ee8641-fcb0-486e-9251-db9a4cf81225",
             "password": "daz3502",
             "auth_type": "password",
             "role": "master",
@@ -65,8 +136,8 @@ class TestCreateCluster(unittest.TestCase):
         },
         {
             "count": 2,
-            "image": "ubuntu-2204-dsy",
-            "flavor_id": "1",
+            "image": "ubuntu2204-dsy",
+            "flavor_id": "a0ee8641-fcb0-486e-9251-db9a4cf81225",
             "user": "root",
             "password": "daz3502",
             "auth_type": "pass",
@@ -76,18 +147,20 @@ class TestCreateCluster(unittest.TestCase):
     ],
     "runtime": "containerd",
     "type": "1",
-    "version": "1.31",
+    "version": "v1.32.0",
     "cni": "calico"
     }
 
-
   def test_create_cluster_success(self):
 
-                #调用celery_app项目下的work.py中的create_cluster方法
+    #调用celery_app项目下的work.py中的create_cluster方法
     # Test execution
     create_cluster(self.cluster_tf_dict, self.cluster_dict)
   
-
+  def test_delete_cluster_success(self):
+    #调用celery_app项目下的work.py中的create_cluster方法
+    # Test execution
+    delete_cluster("fsdfds410-1a8f-4862-a646-32d8845612f4")
   @patch('celery_api.workers.current_task')
   @patch('celery_api.workers.create_infrastructure')
   @patch('celery_api.workers.deploy_kubernetes')

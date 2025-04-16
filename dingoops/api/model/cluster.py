@@ -48,6 +48,8 @@ class ClusterObject(DingoopsObject):
     runtime: Optional[str] = Field(None, description="运行时类型")
     type: Optional[str] = Field(None, description="集群类型")
     version: Optional[str] = Field(None, description="k8s版本")
+    loadbalancer_enabled: Optional[bool] = Field(None, description="是否启用负载均衡器")
+    security_group: Optional[str] = Field(None, description="安全组名称")
     kube_config: Optional[str] = Field(None, description="cni插件")
     
 class ClusterInfo(DingoopsObject):
@@ -61,6 +63,7 @@ class ClusterInfo(DingoopsObject):
     type: Optional[str] = Field(None, description="集群类型")
     version: Optional[str] = Field(None, description="k8s版本")
     kube_config: Optional[str] = Field(None, description="cni插件")
+    loadbalancer_enabled: Optional[bool] = Field(None, description="是否启用负载均衡器")
 
 class NodeObject(DingoopsObject):
     project_id: Optional[str] = Field(None, description="项目id")
@@ -113,3 +116,4 @@ class ClusterTFVarsObject(BaseModel):
     number_of_k8s_masters_no_floating_ip_no_etcd: Optional[int] = Field(None, description="无浮动IP且不带ETCD的K8s master节点数量")
     number_of_k8s_nodes: Optional[int] = Field(None, description="K8s worker节点数量")
     number_of_k8s_nodes_no_floating_ip: Optional[int] = Field(None, description="无浮动IP的K8s worker节点数量")
+    k8s_master_loadbalancer_enabled: Optional[bool] = Field(None, description="是否启用负载均衡器")

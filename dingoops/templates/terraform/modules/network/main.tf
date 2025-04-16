@@ -10,6 +10,11 @@ resource "openstack_networking_router_v2" "k8s" {
 #  count     = var.use_neutron == 1 && var.router_id != null ? 1 : 0
 #}
 
+data "openstack_networking_subnet_v2" "admin_k8s_output" {
+  subnet_id       = var.admin_subnet_id
+  count           = var.use_neutron == 1 && var.admin_subnet_id != null ? 1 : 0
+}
+
 resource "openstack_networking_network_v2" "admin_k8s" {
   name                  = var.admin_network_name
   count                 = var.use_neutron == 1 && !var.use_existing_network ? 1 : 0
@@ -46,7 +51,7 @@ resource "openstack_networking_subnet_v2" "bus_k8s" {
 
 data "openstack_networking_subnet_v2" "bus_k8s_output" {
   subnet_id              = var.bus_subnet_id
-  count           = var.use_neutron == 1 && var.bus_subnet_id != null ? 1 : 0
+  count           = var.use_neutron == 1 && var.bus_subnet_id != "" ? 1 : 0
 }
 
 resource "openstack_networking_router_interface_v2" "k8s" {

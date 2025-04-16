@@ -62,6 +62,7 @@ class ClusterTFVarsObject(BaseModel):
     number_of_k8s_nodes_no_floating_ip: Optional[int] = Field(None, description="无浮动IP的K8s worker节点数量")
     ssh_user: Optional[str] = Field(None, description="用户名")
     password: Optional[str] = Field(None, description="密码")
+    k8s_master_loadbalancer_enabled: Optional[bool] = Field(None, description="是否启用负载均衡器")
     
     
 def create_infrastructure(cluster:ClusterTFVarsObject, task_info:Taskinfo):
@@ -94,7 +95,7 @@ def create_infrastructure(cluster:ClusterTFVarsObject, task_info:Taskinfo):
        
         # 执行terraform apply
         # os.environ['OS_CLOUD']=cluster.region_name
-        os.environ['OS_CLOUD']="shangdi"
+        os.environ['OS_CLOUD']="dingzhi"
         res = subprocess.run([
             "terraform",
             "apply",
@@ -180,7 +181,11 @@ def deploy_kubernetes(cluster:ClusterObject):
             raise FileNotFoundError(f"模板文件不存在: {template_path}")
         
         # 创建Jinja2环境 - 使用相对路径而不是绝对路径
-        env = Environment(loader=FileSystemLoader(template_dir))
+        env = Environment(
+            loader=FileSystemLoader(template_dir),
+            variable_start_string='${',
+            variable_end_string='}'
+        )
         
         # 获取模板并渲染
         template = env.get_template(template_file)  # 只使用文件名而不是完整路径
@@ -405,7 +410,23 @@ def create_node(cluster_id, node_name):
 
 
 @celery_app.task(bind=True)
-def delete_cluster(self, cluster_tf_dict,cluster_dict):
+def delete_cluster(self, cluster_id):
+    #进入到terraform目录
+    cluster_dir = os.path.join(WORK_DIR, "ansible-deploy", "inventory", cluster_id)
+    terraform_dir = os.path.join(cluster_dir, "terraform")
+    os.chdir(terraform_dir)
+    # 删除集群
+    os.environ['OS_CLOUD']="shangdi"
+    res = subprocess.run(["terraform", "destroy", "-auto-approve","-var-file=output.tfvars.json"], capture_output=True)
+    if res.returncode != 0:
+        # 发生错误时更新任务状态为"失败"
+
+        print(f"Terraform error: {res.stderr}")
+        return False
+    else:
+        # 更新任务状态为"成功"
+
+        print("Terraform destroy succeeded")
     pass
     
 @celery_app.task(bind=True)

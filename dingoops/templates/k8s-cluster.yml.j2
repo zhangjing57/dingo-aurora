@@ -132,12 +132,7 @@ kube_proxy_strict_arp: false
 # Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
 # The default empty string slice ([]) means to use all local addresses.
 # kube_proxy_nodeport_addresses_cidr is retained for legacy config
-kube_proxy_nodeport_addresses: >-
-  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
-  [{{ kube_proxy_nodeport_addresses_cidr }}]
-  {%- else -%}
-  []
-  {%- endif -%}
+kube_proxy_nodeport_addresses: []
 
 # If non-empty, will use this string as identification instead of the actual hostname
 # kube_override_hostname: {{ inventory_hostname }}
