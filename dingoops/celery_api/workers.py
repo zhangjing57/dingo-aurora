@@ -77,6 +77,7 @@ def create_infrastructure(cluster:ClusterTFVarsObject, task_info:Taskinfo):
         os.chdir(os.path.join(cluster_dir, "terraform"))
         # 初始化terraform
         os.environ['https_proxy']="172.20.3.88:1088"
+        os.environ['CURRENT_CLUSTER_DIR']=cluster_dir
         res = subprocess.run(["terraform", "init"], capture_output=True)
         if res.returncode != 0:
             # 发生错误时更新任务状态为"失败"
