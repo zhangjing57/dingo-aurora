@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 from sqlalchemy import func
-from db.engines.mysql import get_session
-from db.models.monitor.models import MonitorUrlConfig
+from dingoops.db.engines.mysql import get_session
+from dingoops.db.models.monitor.models import MonitorUrlConfig
 
 monitor_url_config_sort_dict = {"name":MonitorUrlConfig.name}
 

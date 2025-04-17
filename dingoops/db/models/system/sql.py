@@ -1,8 +1,8 @@
 # 数据表对应的model对象
 
 from __future__ import annotations
-from db.engines.mysql import get_session
-from db.models.system.models import OperateLog
+from dingoops.db.engines.mysql import get_session
+from dingoops.db.models.system.models import OperateLog
 
 # 日志排序字段
 operate_log_dir_dic= {"log_date":OperateLog.log_date, "operate_type":OperateLog.operate_type, "user_id":OperateLog.user_id,}

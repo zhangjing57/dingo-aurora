@@ -31,32 +31,24 @@ class Cluster(Base):
     cni = Column(String(length=255), nullable=True)
     kube_config = Column(Text, nullable=False)
     
+    master_count = Column(Integer, default=0, nullable= False)
+    worker_count = Column(Integer, default=0, nullable= False)
+    version = Column(String(length=255), nullable=True)
     create_time = Column(DateTime, nullable=True)
     update_time = Column(DateTime, nullable=True)
     description = Column(String(length=255), nullable=True)
     extra = Column(String(length=255), nullable=True)
-    
+
     
 # 节点对象
-class Nodeinfo(Base):
-    __tablename__ = "ops_node_info"
+class Taskinfo(Base):
+    __tablename__ = "ops_task_info"
 
-    id = Column(String(length=128), primary_key= True, nullable=False, index=True, unique=False)
+    id = Column(Integer, primary_key= True, nullable=False, index=True, unique=False)
     cluster_id = Column(String(length=128), nullable=True)
-    project_id = Column(String(length=128), nullable=True)
-    name = Column(String(length=128), nullable=True)
-    openstack_id = Column(String(length=128), nullable=True)
-    admin_address = Column(String(length=128), default=0, nullable= False)
-    bus_address = Column(String(length=128), default=0, nullable= False)
-    role = Column(String(length=128), default=0, nullable= False)
-    node_type = Column(String(length=128), default=0, nullable= False)
-    region = Column(String(length=128), default=0, nullable= False)
-    status = Column(String(length=128), default=0, nullable= False)
-    private_key = Column(Text, nullable=False)
-    auth_tytpe = Column(String(length=128), default=0, nullable= False)
-    user = Column(String(length=128), default=0, nullable= False)
-    password = Column(String(length=128), default=0, nullable= False)
-    create_time = Column(DateTime, nullable=True)
-    update_time = Column(DateTime, nullable=True)
-    description = Column(String(length=255), nullable=True)
-    extra = Column(String(length=255), nullable=True)
+    task_id = Column(String(length=128), nullable=True)
+    state = Column(String(length=128), nullable=True)
+    msg = Column(String(length=128), nullable=True)
+    detail = Column(String(length=128), default=0, nullable= False)
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)

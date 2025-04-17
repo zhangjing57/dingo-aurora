@@ -14,7 +14,7 @@
 
 import multiprocessing
 
-bind = "0.0.0.0:8889"
+bind = "0.0.0.0:8887"
 workers = (1 + multiprocessing.cpu_count()) // 2
 worker_class = "uvicorn.workers.UvicornWorker"
 timeout = 300
@@ -44,7 +44,7 @@ logconfig_dict = {
         "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "formatter": "generic",
-            "filename": "/var/log/dingoops/skdingoopsyline-error.log",
+            "filename": "/var/log/dingoops/dingoops-error.log",
         },
         "access_file": {
             "class": "logging.handlers.RotatingFileHandler",

@@ -1,6 +1,6 @@
 import pika
 
-from services.bigscreenshovel import SHOVEL_QUEUE, MY_IP, CENTER_REGION_FLAG, TRANSPORT_URL
+from dingoops.services.bigscreenshovel import SHOVEL_QUEUE, MY_IP, CENTER_REGION_FLAG, TRANSPORT_URL
 
 
 class BigScreenSyncService:

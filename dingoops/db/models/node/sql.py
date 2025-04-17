@@ -11,15 +11,13 @@ from dingoops.db.models.cluster.models import Cluster,Taskinfo
 
 from enum import Enum
 
-#链接数据库，可以使用配置文件进行定义
-# engine = create_engine("mysql+pymysql://root:HworLIIDvmTRsPfQauNskuJF8PcoTuULfu3dEHFg@10.220.56.254:3306/dingoops?charset=utf8mb3", echo=True)
-# 资产排序字段字典
 cluster_dir_dic= {"asset_type":Cluster.type,"create_time":Cluster.create_time,
               "name":Cluster.name,"status":Cluster.status,"region_name":Cluster.region_name}
-class ClusterSQL:
+
+class NodeSQL:
 
     @classmethod
-    def list_cluster(cls, query_params, page=1, page_size=10, sort_keys=None, sort_dirs="ascend"):
+    def list_nodes(cls, query_params, page=1, page_size=10, sort_keys=None, sort_dirs="ascend"):
         # 获取session
         session = get_session()
         with session.begin():
@@ -85,63 +83,19 @@ class ClusterSQL:
             # 返回
             return count, cluster_list
 
-
     @classmethod
-    def create_cluster(cls, cluster):
+    def create_nodes(cls, node_list):
         # Session = sessionmaker(bind=engine, expire_on_commit=False)
         # session = Session()
         session = get_session()
         with session.begin():
-            session.add(cluster)
-            
+            for node in node_list:
+                session.add(node)
+
     @classmethod
-    def update_cluster(cls, cluster):
+    def update_node(cls, cluster):
         # Session = sessionmaker(bind=engine, expire_on_commit=False)
         # session = Session()
         session = get_session()
         with session.begin():
             session.merge(cluster)
-
-    @classmethod
-    def delete_cluster(cls, catalog, name):
-        # Session = sessionmaker(bind=engine, expire_on_commit=False)
-        # session = Session()
-        session = get_session()
-        with session.begin():
-            return session.query(AssetBasicInfo).filter(AssetBasicInfo.asset_category == catalog).filter(AssetBasicInfo.name == name).first()
-
-class  TaskSQL:
-
-    @classmethod
-    def insert(cls, task: Taskinfo):
-        session = get_session()
-        with session.begin():
-            session.add(task)
-    @classmethod
-    def update(cls, task: Taskinfo):
-        session = get_session()
-        with session.begin():
-            session.merge(task)
-            
-    
-            
-    @classmethod
-    def list(cls, query_params, sort_keys=None, sort_dirs="ascend"):
-         # 获取session
-        session = get_session()
-        with session.begin():
-            # 根据query_params查询数据
-            query = session.query(Taskinfo)
-            # 查询语句
-
-            # 数据库查询参数
-            if "task_id" in query_params and query_params["task_id"]:
-                query = query.filter(Taskinfo.task_id == query_params["task_id"])
-            if "cluster_id" in query_params and query_params["cluster_id"]:
-                query = query.filter(Taskinfo.cluster_id == query_params["cluster_id"])
-            query = query.order_by(Taskinfo.start_time.desc())
-            count = query.count()
-            cluster_list = query.all()
-            # 返回
-            return count, cluster_list
-        

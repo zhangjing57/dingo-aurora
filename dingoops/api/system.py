@@ -1,9 +1,9 @@
 # 日志等系统相关的接口
 from fastapi import APIRouter, Query, HTTPException
 
-from api.model.system import OperateLogApiModel
-from services.bigscreens import BigScreensService
-from services.system import SystemService
+from dingoops.api.model.system import OperateLogApiModel
+from dingoops.services.bigscreens import BigScreensService
+from dingoops.services.system import SystemService
 
 router = APIRouter()
 system_service = SystemService()

@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from api import api_router
-from jobs import bigscreen_metrics_syncer
+from dingoops.api import api_router
+from dingoops.jobs import bigscreen_metrics_syncer
 
 PROJECT_NAME = "dingoops"
 

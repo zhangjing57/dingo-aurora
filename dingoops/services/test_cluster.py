@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 import logging
 from dingoops.services.cluster import ClusterService
 from dingoops.api.model.cluster import ClusterObject, NodeConfigObject, NetworkConfigObject, ClusterTFVarsObject, NodeGroup
+import json
 
 class TestClusterService(unittest.TestCase):
     def setUp(self):
@@ -32,13 +33,23 @@ class TestClusterService(unittest.TestCase):
         # Configure mocks
 
         mock_task = MagicMock()
-
+        cluster_json_str = json.dumps(self.cluster.__dict__, default=lambda o: o.__dict__ if hasattr(o, "__dict__") else str(o))
         # Call the method
         result = self.cluster_service.create_cluster(self.cluster)
 
         # Assertions
         self.assertEqual(result, "new-cluster-id")
 
+    def test_list_clusters(self):
+        # Configure mocks
+        #构建查询参数
+        query_params = {
+            "id": None,
+            "name": None,
+            "type": None
+        }
+        result2 = self.cluster_service.list_clusters(query_params, 1, -1, None, None)
+        print(result2)
         # First arg should be a ClusterTFVarsObject
 
     @patch('dingoops.services.cluster.neutron')
