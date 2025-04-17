@@ -46,30 +46,29 @@ class ClusterService:
         return "nova" if node_type == "vm" else ""
     def generate_k8s_nodes(self, cluster, k8s_masters, k8s_nodes):
         for idx, node in enumerate(cluster.node_config):
-            for y in range(node.count):
-                if node.role == 'master':
-                        #index=master+node
-                    if y == 0:
-                        float_ip=True
+            if node.get("role") == "master":
+                for i in range(node.count):
+                    if i == 0:
+                        float_ip_bool = True
                     else:
-                        float_ip=False
-                    if y<3:
-                        etcd = True
+                        float_ip_bool = False
+                    if i < 3:
+                        etcd_bool = True
                     else:
-                        etcd =False
-                    k8s_masters[f"master-{int(y)+1}"] = NodeGroup(
+                        etcd_bool = False
+                    k8s_masters[f"master-{int(i) + 1}"] = NodeGroup(
                         az=self.get_az_value(node.type),
                         flavor_id=node.flavor_id,
-                        floating_ip=float_ip, 
-                        etcd=etcd
+                        floating_ip=float_ip_bool,
+                        etcd=etcd_bool
                     )
-                if node.role == 'worker':
-                        #index=master+node
-                    k8s_nodes[f"node-{int(y)+1}"] = NodeGroup(
+            if node.get("role") == "worker":
+                for i in range(node.count):
+                    k8s_nodes[f"node-{int(i) + 1}"] = NodeGroup(
                         az=self.get_az_value(node.type),
                         flavor_id=node.flavor_id,
-                        floating_ip=False, 
-                        etcd=True
+                        floating_ip=False,
+                        etcd=False
                     )
     # 查询资产列表
     def list_clusters(self, query_params, page, page_size, sort_keys, sort_dirs):
