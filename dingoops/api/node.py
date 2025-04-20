@@ -14,7 +14,7 @@ node_service = NodeService()
 
 @router.get("/node/list", summary="k8s集群节点列表", description="k8s集群节点列表")
 async def list_nodes(cluster_id:str = Query(None, description="集群id"),
-        name:str = Query(None, description="节点名称"),
+        name:str = Query(None, description="集群名称"),
         type:str = Query(None, description="节点类型"),
         page: int = Query(1, description="页码"),
         page_size: int = Query(10, description="页数量大小"),
@@ -47,7 +47,6 @@ async def get_node(node_id:str):
         # 获取某个节点的信息
         result = node_service.get_node(node_id)
         # 操作日志
-        #SystemService.create_system_log(OperateLogApiModel(operate_type="create", resource_type="flow", resource_id=result, resource_name=cluster_object.name, operate_flag=True))
         return result
     except Fail as e:
         raise HTTPException(status_code=400, detail=e.error_message)
@@ -60,7 +59,7 @@ async def get_node(node_id:str):
 async def create_node(node_id:str):
     try:
         # 创建节点（扩容节点）
-        result = node_service.get_node(node_id)
+        result = node_service.create_node(node_id)
         # 操作日志
         #SystemService.create_system_log(OperateLogApiModel(operate_type="create", resource_type="flow", resource_id=result, resource_name=cluster_object.name, operate_flag=True))
         return result
@@ -72,7 +71,7 @@ async def create_node(node_id:str):
         raise HTTPException(status_code=400, detail="get cluster error")
 
 @router.delete("/node/", summary="删除某个节点", description="删除某个节点")
-async def create_node(node_id:str):
+async def delete_node(node_id:str):
     try:
         # 删除某个节点
         result = node_service.delete_node(node_id)

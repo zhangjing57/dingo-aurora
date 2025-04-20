@@ -45,6 +45,7 @@ class ClusterService:
     def get_az_value(self, node_type):
         """根据节点类型返回az值"""
         return "nova" if node_type == "vm" else ""
+
     def generate_k8s_nodes(self, cluster, k8s_masters, k8s_nodes):
         for idx, node in enumerate(cluster.node_config):
             if node.get("role") == "master":
@@ -59,7 +60,7 @@ class ClusterService:
                         etcd_bool = False
                     k8s_masters[f"master-{int(i) + 1}"] = NodeGroup(
                         az=self.get_az_value(node.type),
-                        flavor_id=node.flavor_id,
+                        flavor=node.flavor_id,
                         floating_ip=float_ip_bool,
                         etcd=etcd_bool
                     )
@@ -67,7 +68,7 @@ class ClusterService:
                 for i in range(node.count):
                     k8s_nodes[f"node-{int(i) + 1}"] = NodeGroup(
                         az=self.get_az_value(node.type),
-                        flavor_id=node.flavor_id,
+                        flavor=node.flavor_id,
                         floating_ip=False,
                         etcd=False
                     )
@@ -248,7 +249,7 @@ class ClusterService:
             node_db.node_type = node_conf.type
             node_db.cluster_id = cluster.id
             node_db.cluster_name = cluster.name
-            node_db.region_name = cluster.region_name
+            node_db.region = cluster.region_name
             node_db.role = node_conf.role
             node_db.user = node_conf.user
             node_db.password = node_conf.password

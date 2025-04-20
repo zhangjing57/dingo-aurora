@@ -11,8 +11,8 @@ from dingoops.db.models.cluster.models import Cluster,Taskinfo
 from dingoops.db.models.node.models import NodeInfo
 from enum import Enum
 
-cluster_dir_dic= {"asset_type":Cluster.type,"create_time":Cluster.create_time,
-              "name":Cluster.name,"status":Cluster.status,"region_name":Cluster.region_name}
+node_dir_dic= {"create_time":NodeInfo.create_time, "name":NodeInfo.name,"status":NodeInfo.status,
+                  "region_name":NodeInfo.region}
 
 class NodeSQL:
 
@@ -26,20 +26,22 @@ class NodeSQL:
             # 查询语句
 
             # 数据库查询参数
+            if "id" in query_params and query_params["id"]:
+                query = query.filter(NodeInfo.id == query_params["id"])
             if "name" in query_params and query_params["name"]:
-                query = query.filter(NodeInfo.name.like('%' + query_params["name"] + '%'))
+                query = query.filter(NodeInfo.cluster_name.like('%' + query_params["name"] + '%'))
             if "cluster_id" in query_params and query_params["cluster_id"]:
                 query = query.filter(NodeInfo.cluster_id == query_params["cluster_id"])
             # 总数
             count = query.count()
             # 排序
-            if sort_keys is not None and sort_keys in cluster_dir_dic:
+            if sort_keys is not None and sort_keys in node_dir_dic:
                 if sort_dirs == "ascend" or sort_dirs is None :
-                    query = query.order_by(cluster_dir_dic[sort_keys].asc())
+                    query = query.order_by(node_dir_dic[sort_keys].asc())
                 elif sort_dirs == "descend":
-                    query = query.order_by(cluster_dir_dic[sort_keys].desc())
+                    query = query.order_by(node_dir_dic[sort_keys].desc())
             else:
-                query = query.order_by(Cluster.create_time.desc())
+                query = query.order_by(NodeInfo.create_time.desc())
             # 分页条件
             page_size = int(page_size)
             page_num = int(page)
@@ -49,9 +51,9 @@ class NodeSQL:
             # 页数计算
             start = (page_num - 1) * page_size
             query = query.limit(page_size).offset(start)
-            cluster_list = query.all()
+            node_list = query.all()
             # 返回
-            return count, cluster_list
+            return count, node_list
 
     @classmethod
     def create_nodes(cls, node_list):
