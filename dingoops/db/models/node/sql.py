@@ -8,7 +8,7 @@ from typing_extensions import assert_type
 
 from dingoops.db.engines.mysql import get_session
 from dingoops.db.models.cluster.models import Cluster,Taskinfo
-
+from dingoops.db.models.node.models import NodeInfo
 from enum import Enum
 
 cluster_dir_dic= {"asset_type":Cluster.type,"create_time":Cluster.create_time,
@@ -22,44 +22,14 @@ class NodeSQL:
         session = get_session()
         with session.begin():
             # 根据query_params查询数据
-            query = session.query(Cluster)
+            query = session.query(NodeInfo)
             # 查询语句
 
             # 数据库查询参数
             if "name" in query_params and query_params["name"]:
-                query = query.filter(Cluster.name.like('%' + query_params["name"] + '%'))
-            if "id" in query_params and query_params["id"]:
-                query = query.filter(Cluster.id == query_params["id"])
-            if "user_id" in query_params and query_params["user_id"]:
-               query = query.filter(Cluster.user_id == query_params["user_id"])
-            if "project_id" in query_params and query_params["project_id"]:
-                query = query.filter(Cluster.project_id == query_params["project_id"])
-            if "status" in query_params and query_params["status"]:
-                query = query.filter(Cluster.status.like('%' + query_params["status"] + '%'))
-            if "region_name" in query_params and query_params["region_name"]:
-                query = query.filter(Cluster.region_name.like('%' + query_params["region_name"] + '%'))
-            if "network_id" in query_params and query_params["network_id"]:
-                query = query.filter(Cluster.network_id == query_params["network_id"])
-            if "subnet_id" in query_params and query_params["subnet_id"]:
-                query = query.filter(Cluster.subnet_id == query_params["subnet_id"])
-            if "runtime" in query_params and query_params["runtime"]:
-                query = query.filter(Cluster.runtime.like('%' + query_params["runtime"] + '%'))
-            if "type" in query_params and query_params["type"]:
-                query = query.filter(Cluster.type.like('%' + query_params["type"] + '%'))
-            if "service_cidr" in query_params and query_params["service_cidr"]:
-                query = query.filter(Cluster.service_cidr.like('%' + query_params["service_cidr"] + '%'))
-            if "bus_address" in query_params and query_params["bus_address"]:
-                query = query.filter(Cluster.bus_address.like('%' + query_params["bus_address"] + '%'))
-            if "api_address" in query_params and query_params["api_address"]:
-                query = query.filter(Cluster.api_address.like('%' + query_params["api_address"] + '%'))
-            if "cni" in query_params and query_params["cni"]:
-                query = query.filter(Cluster.cni.like('%' + query_params["cni"] + '%'))
-            if "user_name" in query_params and query_params["user_name"]:
-                query = query.filter(Cluster.user_name.like('%' + query_params["user_name"] + '%'))
-            if "manufacture_id" in query_params and query_params["manufacture_id"]:
-                query = query.filter(Cluster.id == query_params["manufacture_id"])
-            if "manufacture_name" in query_params and query_params["manufacture_name"]:
-                query = query.filter(Cluster.name.like('%' + query_params["manufacture_name"] + '%'))
+                query = query.filter(NodeInfo.name.like('%' + query_params["name"] + '%'))
+            if "cluster_id" in query_params and query_params["cluster_id"]:
+                query = query.filter(NodeInfo.cluster_id == query_params["cluster_id"])
             # 总数
             count = query.count()
             # 排序

@@ -254,11 +254,11 @@ class ClusterService:
             node_db.password = node_conf.password
             node_db.private_key = node_conf.private_key
             node_db.openstack_id = node_conf.openstack_id
+            node_db.status = "creating"
 
             # 节点的ip地址，创建虚拟机的时候不知道，只能等到后面从集群中获取ip地址，node的名字如何匹配，节点的状态是not ready还是ready？
             node_db.admin_address = ""
             node_db.name = ""
-            node_db.status = ""
             node_db.bus_address = ""
 
             nodeinfo_list.append(node_db)

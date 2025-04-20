@@ -76,7 +76,7 @@ class NodeService:
 
     # 查询资产列表
     @classmethod
-    def list_nodes(cls, id, query_params, page, page_size, sort_keys, sort_dirs):
+    def list_nodes(cls, query_params, page, page_size, sort_keys, sort_dirs):
         # 业务逻辑
         try:
             # 按照条件从数据库中查询数据
@@ -115,41 +115,41 @@ class NodeService:
             traceback.print_exc()
             raise e
 
-    def delete_cluster(self, cluster_id):
-        if not cluster_id:
+    def delete_node(self, node_id):
+        if not node_id:
             return None
         # 详情
         try:
             # 更新集群状态为删除中
-            
+
             # 根据id查询
             query_params = {}
-            query_params["id"] = cluster_id
+            query_params["id"] = node_id
             res = self.list_nodes(query_params, 1, 10, None, None)
             # 空
             if not res or not res.get("data"):
                 return None
             # 返回第一条数据
-            cluster = res.get("data")[0]
-            cluster.status = "deleting"
+            node = res.get("data")[0]
+            node.status = "deleting"
             # 保存对象到数据库
-            res = ClusterSQL.update_cluster(cluster)
+            res = ClusterSQL.update_cluster(node)
             # 调用celery_app项目下的work.py中的delete_cluster方法
-            result = celery_app.send_task("dingoops.celery_api.workers.delete_cluster", args=[cluster_id])
+            result = celery_app.send_task("dingoops.celery_api.workers.delete_cluster", args=[node_id])
             if result.get():
                 # 删除成功，更新数据库状态
-                cluster.status = "deleted"
-                res = ClusterSQL.update_cluster(cluster)
+                node.status = "deleted"
+                res = ClusterSQL.update_cluster(node)
             else:
                 # 删除失败，更新数据库状态
-                cluster.status = "delete_failed"
-                res = ClusterSQL.update_cluster(cluster)
+                node.status = "delete_failed"
+                res = ClusterSQL.update_cluster(node)
             return res.get("data")[0]
         except Exception as e:
             import traceback
             traceback.print_exc()
             raise e
-    
+
     def convert_nodeinfo_todb(self, cluster:ClusterObject):
         nodeinfo_list = []
 

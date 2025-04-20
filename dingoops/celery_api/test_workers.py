@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 import subprocess
 import time
-from dingoops.celery_api.workers import create_infrastructure, create_cluster, ClusterTFVarsObject
+from dingoops.celery_api.workers import create_infrastructure, create_cluster, ClusterTFVarsObject, delete_cluster
 from dingoops.api.model.cluster import ClusterObject, NodeConfigObject, NetworkConfigObject
 
 
