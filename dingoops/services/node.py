@@ -169,13 +169,14 @@ class NodeService:
         # 详情
         try:
             cluster_id = node_list_info.cluter_id
+            cluster_name = node_list_info.cluter_name
             node_list = node_list_info.node_list
             extravars = {}
             for node in node_list:
                 extravars[node.name] = node.admin_address
             # 调用celery_app项目下的work.py中的create_cluster方法
             result = celery_app.send_task("dingoops.celery_api.workers.delete_node",
-                                          args=[cluster_id, extravars])
+                                          args=[cluster_id, cluster_name, extravars])
             return result
         except Exception as e:
             import traceback

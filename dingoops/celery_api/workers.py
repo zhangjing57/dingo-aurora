@@ -440,7 +440,7 @@ def delete_cluster(self, cluster_id):
     pass
     
 @celery_app.task(bind=True)
-def delete_node(self, cluster_id, extravars):
+def delete_node(self, cluster_id, cluster_name, extravars):
     try:
         # 1、在这里先找到cluster的文件夹，找到对应的目录，先通过发来的node_list组合成extravars的变量，再执行remove-node.yaml
         ansible_dir = os.path.join(WORK_DIR, "ansible-deploy")
