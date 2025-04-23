@@ -119,7 +119,6 @@ class ClusterTFVarsObject(BaseModel):
 
 class NodeRemoveObject(DingoopsObject):
     cluter_id: Optional[str] = Field(None, description="集群id")
-    cluster_name: Optional[str] = Field(None, description="集群name")
     node_list: Optional[List[NodeObject]] = Field(None, description="缩容节点列表")
 
 
